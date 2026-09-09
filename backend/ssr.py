@@ -400,6 +400,32 @@ async def _render_vacancy_detail(db, site_url: str, canonical: str, vac_id: str,
     if last:
         meta_bits.append(f"Last date: {_e(last)}")
 
+    # Important Links (Fix 1) — always English labels, working URLs. Rendered in
+    # the SSR/crawler HTML too so it matches the React page.
+    _LINK_LABELS = {
+        "apply": "Apply Online",
+        "registration": "Registration Link",
+        "notification": "Official Notification PDF",
+        "official": "Official Website",
+    }
+    links_html = ""
+    imp_links = v.get("important_links") or []
+    if imp_links:
+        rows = []
+        for l in imp_links:
+            href = l.get("href") or l.get("url")
+            if not href:
+                continue
+            kind = l.get("kind")
+            is_pdf = (l.get("type") == "pdf") or href.lower().split("?")[0].endswith(".pdf")
+            label = _LINK_LABELS.get(kind) or ("Official Notification PDF" if is_pdf else "Official Website")
+            rows.append(
+                f'<li><strong>{_e(label)}:</strong> '
+                f'<a href="{_e(href)}" target="_blank" rel="noreferrer nofollow">Click here</a></li>'
+            )
+        if rows:
+            links_html = "<h2>Important Links</h2><ul>" + "".join(rows) + "</ul>"
+
     body = (
         f"<h1>{_e(name)}</h1>"
         f'<div class="meta">{" · ".join(meta_bits)}</div>'
@@ -407,6 +433,7 @@ async def _render_vacancy_detail(db, site_url: str, canonical: str, vac_id: str,
         f"<h2>विवरण</h2><div>{_para(h_desc)}</div>"
         f"<h2>आवेदन कैसे करें</h2><div>{_para(h_apply)}</div>"
         f"<h2>चयन प्रक्रिया</h2><div>{_para(h_select)}</div>"
+        + links_html
         + f'<p><a href="{_e(site_url)}/">← All latest vacancies</a></p>'
     )
     return _shell(title=title, description=desc, canonical=canonical,

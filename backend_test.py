@@ -1,28 +1,34 @@
 #!/usr/bin/env python3
-"""Backend test for Hindi content generation feature (Hybrid templates + Gemini Flash LLM)."""
+"""Backend test for HR Digital Services Hindi-generation fixes.
+
+Tests the 4 fixes:
+1. Important Links in SSR + registration kind
+2. English-term protection (no Devanagari transliteration)
+3. Human-like Hindi with varied sentences and LLM temp ~0.7
+4. English descriptive fields + version-based regeneration
+"""
 import requests
 import re
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
-# Base URL from frontend/.env
-BASE_URL = "https://employee-hub-596.preview.emergentagent.com/api"
+# Base URL - using internal localhost as specified
+BASE_URL = "http://localhost:8001/api"
 
-# Admin credentials (try first, fallback to second)
-ADMIN_CREDS = [
-    {"email": "admin@hrdigitalservices.in", "password": "Admin@12345"},
-    {"email": "admin@haryanaenterprises.com", "password": "Admin@12345"},
-]
+# Admin credentials from review request
+ADMIN_EMAIL = "admin@haryanaenterprises.com"
+ADMIN_PASSWORD = "Admin@123"
 
 # Test results
 results = {
     "passed": 0,
     "failed": 0,
-    "tests": []
+    "tests": [],
+    "critical_failures": []
 }
 
 
-def log_test(name: str, passed: bool, details: str = ""):
+def log_test(name: str, passed: bool, details: str = "", critical: bool = False):
     """Log a test result."""
     status = "✅ PASS" if passed else "❌ FAIL"
     print(f"{status}: {name}")
@@ -33,395 +39,412 @@ def log_test(name: str, passed: bool, details: str = ""):
         results["passed"] += 1
     else:
         results["failed"] += 1
+        if critical:
+            results["critical_failures"].append(name)
 
 
-def admin_login() -> Optional[requests.Session]:
-    """Login as admin and return session with cookies."""
-    for creds in ADMIN_CREDS:
-        session = requests.Session()
-        try:
-            resp = session.post(f"{BASE_URL}/auth/login", json=creds, timeout=15)
-            if resp.status_code == 200:
-                print(f"✅ Admin login successful with {creds['email']}")
-                return session
-        except Exception as e:
-            print(f"⚠️  Login attempt with {creds['email']} failed: {e}")
-    print("❌ All admin login attempts failed")
-    return None
+def admin_login() -> Optional[str]:
+    """Login as admin and return JWT token."""
+    try:
+        resp = requests.post(
+            f"{BASE_URL}/auth/login",
+            json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
+            timeout=15
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            token = data.get("access_token")
+            if token:
+                print(f"✅ Admin login successful")
+                return token
+            else:
+                print(f"❌ Login response missing access_token: {data}")
+                return None
+        else:
+            print(f"❌ Admin login failed: {resp.status_code} - {resp.text}")
+            return None
+    except Exception as e:
+        print(f"❌ Admin login exception: {e}")
+        return None
 
 
-def has_devanagari(text: str) -> bool:
-    """Check if text contains Devanagari (Hindi) characters."""
-    if not text:
-        return False
-    # Unicode range for Devanagari: U+0900 to U+097F
-    return bool(re.search(r'[\u0900-\u097F]', text))
+# Devanagari transliterations that should NOT appear (Fix 2)
+FORBIDDEN_DEVANAGARI_TERMS = [
+    "पीडीएफ",           # PDF
+    "एडमिट कार्ड",      # Admit Card
+    "रिजल्ट",           # Result
+    "सिलेबस",           # Syllabus
+    "रजिस्ट्रेशन लिंक",  # Registration Link
+    "ऑफिशियल वेबसाइट",  # Official Website
+]
 
 
-def test_lazy_generation_and_cache(session: requests.Session):
-    """Test 1: LAZY GENERATION + CACHE (core)."""
+def check_english_terms_protection(text: str) -> tuple[bool, List[str]]:
+    """Check if text contains forbidden Devanagari transliterations.
+    
+    Returns: (is_clean, list_of_violations)
+    """
+    violations = []
+    for term in FORBIDDEN_DEVANAGARI_TERMS:
+        if term in text:
+            violations.append(term)
+    return len(violations) == 0, violations
+
+
+def test_1_get_vacancy_list():
+    """Test 1: GET /api/vacancies?limit=1 to get a vacancy ID."""
     print("\n" + "="*80)
-    print("TEST 1: LAZY GENERATION + CACHE")
+    print("TEST 1: GET /api/vacancies?limit=1")
     print("="*80)
     
-    # Get vacancy list
-    resp = session.get(f"{BASE_URL}/vacancies?limit=5", timeout=15)
-    log_test("GET /api/vacancies?limit=5", resp.status_code == 200, f"Status: {resp.status_code}")
-    
-    if resp.status_code != 200:
-        log_test("Lazy generation test", False, "Cannot get vacancy list")
-        return None
-    
-    data = resp.json()
-    items = data.get("items", []) if isinstance(data, dict) else data
-    
-    if not items:
-        log_test("Lazy generation test", False, "No vacancies found")
-        return None
-    
-    vacancy_id = items[0].get("id")
-    log_test("Extract vacancy ID", bool(vacancy_id), f"ID: {vacancy_id}")
-    
-    # First GET - should trigger lazy generation
-    print(f"\n📝 First GET /api/vacancies/{vacancy_id} (should trigger lazy generation)")
-    resp1 = session.get(f"{BASE_URL}/vacancies/{vacancy_id}", timeout=20)
-    log_test("First GET /api/vacancies/{id}", resp1.status_code == 200, f"Status: {resp1.status_code}")
-    
-    if resp1.status_code != 200:
-        log_test("Lazy generation test", False, f"First GET failed: {resp1.status_code}")
-        return None
-    
-    v1 = resp1.json()
-    
-    # Check all required Hindi fields are present and non-empty
-    required_fields = ["hindi_intro", "hindi_description", "hindi_how_to_apply", 
-                      "hindi_selection_process", "hindi_source", "hindi_generated_at"]
-    
-    for field in required_fields:
-        value = v1.get(field)
-        is_present = value is not None and (isinstance(value, str) and value.strip() or not isinstance(value, str))
-        log_test(f"Field '{field}' present and non-empty", is_present, 
-                f"Value: {str(value)[:100] if value else 'None'}")
-    
-    # Check hindi_source is either 'llm' or 'template'
-    hindi_source = v1.get("hindi_source")
-    valid_source = hindi_source in ("llm", "template")
-    log_test("hindi_source is 'llm' or 'template'", valid_source, f"Value: {hindi_source}")
-    
-    # Check Hindi fields contain Devanagari characters
-    hindi_fields = ["hindi_intro", "hindi_description", "hindi_how_to_apply", "hindi_selection_process"]
-    for field in hindi_fields:
-        text = v1.get(field, "")
-        has_hindi = has_devanagari(text)
-        log_test(f"'{field}' contains Devanagari characters", has_hindi, 
-                f"Sample: {text[:80] if text else 'Empty'}")
-    
-    # Check for junk in intro (like 'PER/0106/...')
-    intro = v1.get("hindi_intro", "")
-    has_junk = bool(re.search(r'PER/\d+/', intro))
-    log_test("hindi_intro does NOT contain junk like 'PER/0106/...'", not has_junk, 
-            f"Intro: {intro[:100]}")
-    
-    # Second GET - should return cached content (same hindi_generated_at and hindi_intro)
-    print(f"\n📝 Second GET /api/vacancies/{vacancy_id} (should return cached content)")
-    resp2 = session.get(f"{BASE_URL}/vacancies/{vacancy_id}", timeout=15)
-    log_test("Second GET /api/vacancies/{id}", resp2.status_code == 200, f"Status: {resp2.status_code}")
-    
-    if resp2.status_code != 200:
-        log_test("Cache test", False, f"Second GET failed: {resp2.status_code}")
-        return vacancy_id
-    
-    v2 = resp2.json()
-    
-    # Compare hindi_generated_at
-    gen_at_1 = v1.get("hindi_generated_at")
-    gen_at_2 = v2.get("hindi_generated_at")
-    cache_time_match = gen_at_1 == gen_at_2
-    log_test("hindi_generated_at is identical (cached)", cache_time_match, 
-            f"First: {gen_at_1}, Second: {gen_at_2}")
-    
-    # Compare hindi_intro
-    intro_1 = v1.get("hindi_intro")
-    intro_2 = v2.get("hindi_intro")
-    cache_intro_match = intro_1 == intro_2
-    log_test("hindi_intro is identical (cached)", cache_intro_match, 
-            f"Match: {intro_1 == intro_2}")
-    
-    return vacancy_id
-
-
-def test_structured_facts_stay_english(session: requests.Session, vacancy_id: str):
-    """Test 2: STRUCTURED FACTS STAY ENGLISH."""
-    print("\n" + "="*80)
-    print("TEST 2: STRUCTURED FACTS STAY ENGLISH")
-    print("="*80)
-    
-    resp = session.get(f"{BASE_URL}/vacancies/{vacancy_id}", timeout=15)
-    log_test("GET /api/vacancies/{id}", resp.status_code == 200, f"Status: {resp.status_code}")
-    
-    if resp.status_code != 200:
-        return
-    
-    v = resp.json()
-    
-    # Check that structured fields remain in English (not translated to Hindi)
-    english_fields = ["title", "organization", "qualification", "last_date_text"]
-    
-    for field in english_fields:
-        value = v.get(field, "")
-        if not value:
-            log_test(f"'{field}' check (empty field)", True, "Field is empty, skipping")
-            continue
+    try:
+        resp = requests.get(f"{BASE_URL}/vacancies?limit=1", timeout=15)
+        log_test("GET /api/vacancies?limit=1 returns 200", resp.status_code == 200, 
+                f"Status: {resp.status_code}", critical=True)
         
-        # Check if field is NOT primarily Devanagari (should be English)
-        # Allow some Hindi but majority should be English/Latin script
-        devanagari_chars = len(re.findall(r'[\u0900-\u097F]', value))
-        total_chars = len(re.sub(r'\s', '', value))
+        if resp.status_code != 200:
+            return None
         
-        if total_chars == 0:
-            log_test(f"'{field}' stays English", True, "Field is whitespace only")
-            continue
-        
-        devanagari_ratio = devanagari_chars / total_chars if total_chars > 0 else 0
-        is_english = devanagari_ratio < 0.5  # Less than 50% Devanagari = English
-        
-        log_test(f"'{field}' stays English (not translated)", is_english, 
-                f"Value: {value[:80]}, Devanagari ratio: {devanagari_ratio:.2%}")
-
-
-def test_admin_regenerate(session: requests.Session, vacancy_id: str):
-    """Test 3: ADMIN REGENERATE."""
-    print("\n" + "="*80)
-    print("TEST 3: ADMIN REGENERATE")
-    print("="*80)
-    
-    # Test regenerate with valid ID
-    print(f"\n📝 POST /api/admin/vacancies/{vacancy_id}/hindi/regenerate")
-    resp = session.post(f"{BASE_URL}/admin/vacancies/{vacancy_id}/hindi/regenerate", timeout=30)
-    log_test("POST regenerate with valid ID", resp.status_code == 200, f"Status: {resp.status_code}")
-    
-    if resp.status_code == 200:
         data = resp.json()
+        items = data.get("items", []) if isinstance(data, dict) else data
         
-        # Check response contains Hindi fields
-        has_hindi_intro = bool(data.get("hindi_intro"))
-        has_hindi_desc = bool(data.get("hindi_description"))
-        has_hindi_apply = bool(data.get("hindi_how_to_apply"))
-        has_hindi_selection = bool(data.get("hindi_selection_process"))
-        has_source = data.get("hindi_source") in ("llm", "template")
+        if not items:
+            log_test("Vacancy list has items", False, "No vacancies found", critical=True)
+            return None
         
-        log_test("Response contains hindi_intro", has_hindi_intro, f"Length: {len(data.get('hindi_intro', ''))}")
-        log_test("Response contains hindi_description", has_hindi_desc, f"Length: {len(data.get('hindi_description', ''))}")
-        log_test("Response contains hindi_how_to_apply", has_hindi_apply, f"Length: {len(data.get('hindi_how_to_apply', ''))}")
-        log_test("Response contains hindi_selection_process", has_hindi_selection, f"Length: {len(data.get('hindi_selection_process', ''))}")
-        log_test("Response contains valid hindi_source", has_source, f"Value: {data.get('hindi_source')}")
-    
-    # Test regenerate with invalid ID (malformed)
-    print(f"\n📝 POST /api/admin/vacancies/xxxxxxxx/hindi/regenerate (invalid ID)")
-    resp_invalid = session.post(f"{BASE_URL}/admin/vacancies/xxxxxxxx/hindi/regenerate", timeout=15)
-    is_error = resp_invalid.status_code in (400, 404)
-    log_test("POST regenerate with invalid ID returns 400/404", is_error, 
-            f"Status: {resp_invalid.status_code} (expected 400 or 404)")
-    
-    # Test regenerate with well-formed but non-existent 24-hex ID
-    fake_id = "a" * 24
-    print(f"\n📝 POST /api/admin/vacancies/{fake_id}/hindi/regenerate (non-existent ID)")
-    resp_notfound = session.post(f"{BASE_URL}/admin/vacancies/{fake_id}/hindi/regenerate", timeout=15)
-    is_404 = resp_notfound.status_code == 404
-    log_test("POST regenerate with non-existent ID returns 404", is_404, 
-            f"Status: {resp_notfound.status_code} (expected 404)")
+        vacancy_id = items[0].get("id")
+        log_test("Extract vacancy ID", bool(vacancy_id), f"ID: {vacancy_id}")
+        
+        return vacancy_id
+        
+    except Exception as e:
+        log_test("GET /api/vacancies?limit=1", False, f"Exception: {e}", critical=True)
+        return None
 
 
-def test_admin_edit_override_persists(session: requests.Session, vacancy_id: str):
-    """Test 4: ADMIN EDIT/OVERRIDE PERSISTS (does not get wiped)."""
+def test_2_vacancy_detail_fields(vacancy_id: str):
+    """Test 2: GET /api/vacancies/{id} - verify Hindi and English fields."""
     print("\n" + "="*80)
-    print("TEST 4: ADMIN EDIT/OVERRIDE PERSISTS")
+    print(f"TEST 2: GET /api/vacancies/{vacancy_id} - Field Verification")
     print("="*80)
     
-    # Get current vacancy details
-    resp = session.get(f"{BASE_URL}/vacancies/{vacancy_id}", timeout=15)
-    if resp.status_code != 200:
-        log_test("Get vacancy for edit test", False, f"Cannot get vacancy: {resp.status_code}")
-        return
-    
-    v = resp.json()
-    original_title = v.get("title", "Test Vacancy")
-    
-    # Step 1: PUT with custom hindi_intro
-    custom_intro = "मेरा कस्टम हिंदी परिचय टेस्ट"
-    print(f"\n📝 PUT /api/admin/vacancies/{vacancy_id} with custom hindi_intro")
-    
-    payload = {
-        "title": original_title,  # Reuse existing title
-        "hindi_intro": custom_intro,
-        "organization": v.get("organization", "Test Org"),
-        "category": v.get("category", "other"),
-    }
-    
-    resp_put = session.put(f"{BASE_URL}/admin/vacancies/{vacancy_id}", json=payload, timeout=15)
-    log_test("PUT with custom hindi_intro", resp_put.status_code == 200, f"Status: {resp_put.status_code}")
-    
-    # Step 2: GET and verify custom intro is saved
-    print(f"\n📝 GET /api/vacancies/{vacancy_id} (verify custom intro)")
-    resp_get1 = session.get(f"{BASE_URL}/vacancies/{vacancy_id}", timeout=15)
-    log_test("GET after PUT", resp_get1.status_code == 200, f"Status: {resp_get1.status_code}")
-    
-    if resp_get1.status_code == 200:
-        v1 = resp_get1.json()
-        intro_matches = v1.get("hindi_intro") == custom_intro
-        is_edited = v1.get("hindi_edited") == True
+    try:
+        resp = requests.get(f"{BASE_URL}/vacancies/{vacancy_id}", timeout=20)
+        log_test(f"GET /api/vacancies/{vacancy_id} returns 200", resp.status_code == 200, 
+                f"Status: {resp.status_code}", critical=True)
         
-        log_test("hindi_intro equals custom value", intro_matches, 
-                f"Expected: '{custom_intro}', Got: '{v1.get('hindi_intro', '')[:100]}'")
-        log_test("hindi_edited is True", is_edited, f"Value: {v1.get('hindi_edited')}")
-    
-    # Step 3: GET again to verify it's still there (lazy generation must NOT overwrite)
-    print(f"\n📝 GET /api/vacancies/{vacancy_id} AGAIN (verify persistence)")
-    resp_get2 = session.get(f"{BASE_URL}/vacancies/{vacancy_id}", timeout=15)
-    log_test("GET again", resp_get2.status_code == 200, f"Status: {resp_get2.status_code}")
-    
-    if resp_get2.status_code == 200:
-        v2 = resp_get2.json()
-        intro_still_matches = v2.get("hindi_intro") == custom_intro
-        log_test("Custom hindi_intro STILL persists (not overwritten)", intro_still_matches, 
-                f"Value: '{v2.get('hindi_intro', '')[:100]}'")
-    
-    # Step 4: PUT again WITHOUT hindi fields (just title) - should preserve Hindi
-    print(f"\n📝 PUT /api/admin/vacancies/{vacancy_id} WITHOUT hindi fields")
-    payload_no_hindi = {
-        "title": original_title,
-        "organization": v.get("organization", "Test Org"),
-        "category": v.get("category", "other"),
-    }
-    
-    resp_put2 = session.put(f"{BASE_URL}/admin/vacancies/{vacancy_id}", json=payload_no_hindi, timeout=15)
-    log_test("PUT without hindi fields", resp_put2.status_code == 200, f"Status: {resp_put2.status_code}")
-    
-    # Step 5: GET and verify custom intro is STILL preserved
-    print(f"\n📝 GET /api/vacancies/{vacancy_id} (verify Hindi preserved after normal edit)")
-    resp_get3 = session.get(f"{BASE_URL}/vacancies/{vacancy_id}", timeout=15)
-    log_test("GET after PUT without hindi", resp_get3.status_code == 200, f"Status: {resp_get3.status_code}")
-    
-    if resp_get3.status_code == 200:
-        v3 = resp_get3.json()
-        intro_preserved = v3.get("hindi_intro") == custom_intro
-        log_test("Custom hindi_intro PRESERVED after normal edit", intro_preserved, 
-                f"Value: '{v3.get('hindi_intro', '')[:100]}'")
+        if resp.status_code != 200:
+            return None
+        
+        v = resp.json()
+        
+        # Check Hindi fields
+        hindi_fields = [
+            "hindi_intro",
+            "hindi_description",
+            "hindi_how_to_apply",
+            "hindi_selection_process"
+        ]
+        
+        print("\n📝 Checking Hindi fields:")
+        for field in hindi_fields:
+            value = v.get(field)
+            is_present = value and isinstance(value, str) and value.strip()
+            log_test(f"Field '{field}' present and non-empty", is_present, 
+                    f"Length: {len(value) if value else 0}", critical=True)
+        
+        # Check hindi_ver == 2
+        hindi_ver = v.get("hindi_ver")
+        log_test("hindi_ver == 2", hindi_ver == 2, f"Value: {hindi_ver}", critical=True)
+        
+        # Check English fields (Fix 4)
+        english_fields = [
+            "english_intro",
+            "english_description",
+            "english_how_to_apply",
+            "english_selection_process"
+        ]
+        
+        print("\n📝 Checking English fields (Fix 4):")
+        for field in english_fields:
+            value = v.get(field)
+            is_present = value and isinstance(value, str) and value.strip()
+            log_test(f"Field '{field}' present and non-empty", is_present, 
+                    f"Length: {len(value) if value else 0}", critical=True)
+        
+        return v
+        
+    except Exception as e:
+        log_test(f"GET /api/vacancies/{vacancy_id}", False, f"Exception: {e}", critical=True)
+        return None
 
 
-def test_ssr_match(session: requests.Session, vacancy_id: str):
-    """Test 5: SSR MATCH."""
+def test_3_english_term_protection(vacancy_data: dict):
+    """Test 3: English-term protection (Fix 2) - verify no Devanagari transliterations."""
     print("\n" + "="*80)
-    print("TEST 5: SSR MATCH")
+    print("TEST 3: English-term Protection (Fix 2)")
     print("="*80)
     
-    # Get the vacancy detail first to know what Hindi content to expect
-    resp_detail = session.get(f"{BASE_URL}/vacancies/{vacancy_id}", timeout=15)
-    if resp_detail.status_code != 200:
-        log_test("Get vacancy for SSR test", False, f"Cannot get vacancy: {resp_detail.status_code}")
-        return
+    hindi_fields = [
+        "hindi_intro",
+        "hindi_description",
+        "hindi_how_to_apply",
+        "hindi_selection_process"
+    ]
     
-    v = resp_detail.json()
-    expected_hindi_desc = v.get("hindi_description", "")
+    all_clean = True
     
-    # GET SSR with Facebook bot user-agent
-    print(f"\n📝 GET /api/render?path=/vacancies/{vacancy_id} with Facebook bot UA")
-    headers = {"User-Agent": "facebookexternalhit/1.1"}
-    resp_ssr = session.get(f"{BASE_URL}/render?path=/vacancies/{vacancy_id}", headers=headers, timeout=20)
-    
-    log_test("GET /api/render with bot UA", resp_ssr.status_code == 200, f"Status: {resp_ssr.status_code}")
-    
-    if resp_ssr.status_code != 200:
-        log_test("SSR test", False, f"SSR endpoint failed: {resp_ssr.status_code}")
-        return
-    
-    html = resp_ssr.text
-    
-    # Check content-type is text/html
-    content_type = resp_ssr.headers.get("Content-Type", "")
-    is_html = "text/html" in content_type
-    log_test("Content-Type is text/html", is_html, f"Value: {content_type}")
-    
-    # Check for JobPosting JSON-LD schema
-    has_job_posting = "JobPosting" in html and "application/ld+json" in html
-    log_test("HTML contains JobPosting application/ld+json", has_job_posting, 
-            f"Found: {has_job_posting}")
-    
-    # Extract JSON-LD and check description contains Devanagari
-    if has_job_posting:
-        # Find all JSON-LD blocks
-        json_ld_pattern = r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>'
-        json_ld_blocks = re.findall(json_ld_pattern, html, re.DOTALL | re.IGNORECASE)
+    for field in hindi_fields:
+        text = vacancy_data.get(field, "")
+        if not text:
+            continue
         
-        job_posting_found = False
-        for block in json_ld_blocks:
-            try:
-                data = json.loads(block)
-                if data.get("@type") == "JobPosting":
-                    job_posting_found = True
-                    description = data.get("description", "")
-                    has_hindi_in_schema = has_devanagari(description)
-                    log_test("JobPosting description contains Devanagari Hindi", has_hindi_in_schema, 
-                            f"Sample: {description[:100]}")
-                    break
-            except json.JSONDecodeError:
+        is_clean, violations = check_english_terms_protection(text)
+        
+        if is_clean:
+            log_test(f"'{field}' has NO forbidden Devanagari transliterations", True, 
+                    f"✓ Clean")
+        else:
+            log_test(f"'{field}' has NO forbidden Devanagari transliterations", False, 
+                    f"❌ Found: {', '.join(violations)}", critical=True)
+            all_clean = False
+            # Print sample of the text for debugging
+            print(f"  Sample text: {text[:200]}")
+    
+    return all_clean
+
+
+def test_4_multiple_vacancies_english_terms():
+    """Test 4: Test English-term protection across 3-4 different vacancy IDs."""
+    print("\n" + "="*80)
+    print("TEST 4: English-term Protection Across Multiple Vacancies")
+    print("="*80)
+    
+    try:
+        # Get 4 vacancies
+        resp = requests.get(f"{BASE_URL}/vacancies?limit=4", timeout=15)
+        if resp.status_code != 200:
+            log_test("Get multiple vacancies", False, f"Status: {resp.status_code}")
+            return
+        
+        data = resp.json()
+        items = data.get("items", []) if isinstance(data, dict) else data
+        
+        if len(items) < 3:
+            log_test("Get at least 3 vacancies", False, f"Only got {len(items)} vacancies")
+            return
+        
+        print(f"\n📝 Testing {len(items)} vacancies:")
+        
+        for i, item in enumerate(items[:4], 1):
+            vacancy_id = item.get("id")
+            print(f"\n  Vacancy {i}/{len(items[:4])}: {vacancy_id}")
+            
+            # Get full details
+            resp_detail = requests.get(f"{BASE_URL}/vacancies/{vacancy_id}", timeout=20)
+            if resp_detail.status_code != 200:
+                print(f"    ⚠️  Could not fetch details: {resp_detail.status_code}")
                 continue
+            
+            v = resp_detail.json()
+            
+            # Check English term protection
+            hindi_fields = ["hindi_intro", "hindi_description", "hindi_how_to_apply", "hindi_selection_process"]
+            all_clean = True
+            
+            for field in hindi_fields:
+                text = v.get(field, "")
+                if not text:
+                    continue
+                
+                is_clean, violations = check_english_terms_protection(text)
+                if not is_clean:
+                    all_clean = False
+                    print(f"    ❌ {field}: Found {violations}")
+            
+            if all_clean:
+                print(f"    ✅ All Hindi fields clean")
+            
+            log_test(f"Vacancy {i} ({vacancy_id[:8]}...) English-term protection", all_clean, 
+                    f"Clean: {all_clean}")
         
-        if not job_posting_found:
-            log_test("JobPosting JSON-LD found and parsed", False, "Could not find or parse JobPosting")
+    except Exception as e:
+        log_test("Multiple vacancies English-term test", False, f"Exception: {e}")
+
+
+def test_5_ssr_important_links():
+    """Test 5: SSR Important Links (Fix 1)."""
+    print("\n" + "="*80)
+    print("TEST 5: SSR Important Links (Fix 1)")
+    print("="*80)
     
-    # Check visible body contains Hindi section headings
-    hindi_headings = ["विवरण", "आवेदन कैसे करें", "चयन प्रक्रिया"]
-    for heading in hindi_headings:
-        has_heading = heading in html
-        log_test(f"HTML body contains Hindi heading '{heading}'", has_heading, 
-                f"Found: {has_heading}")
+    try:
+        # First, find a vacancy that has important_links
+        resp = requests.get(f"{BASE_URL}/vacancies?limit=10", timeout=15)
+        if resp.status_code != 200:
+            log_test("Get vacancies for SSR test", False, f"Status: {resp.status_code}")
+            return
+        
+        data = resp.json()
+        items = data.get("items", []) if isinstance(data, dict) else data
+        
+        # Find a vacancy with important_links
+        vacancy_with_links = None
+        for item in items:
+            vacancy_id = item.get("id")
+            resp_detail = requests.get(f"{BASE_URL}/vacancies/{vacancy_id}", timeout=20)
+            if resp_detail.status_code == 200:
+                v = resp_detail.json()
+                important_links = v.get("important_links", [])
+                if important_links and len(important_links) > 0:
+                    vacancy_with_links = vacancy_id
+                    print(f"  Found vacancy with important_links: {vacancy_id}")
+                    print(f"  Links count: {len(important_links)}")
+                    break
+        
+        if not vacancy_with_links:
+            log_test("Find vacancy with important_links", False, 
+                    "No vacancy found with important_links in first 10 results")
+            # Try the first vacancy anyway
+            vacancy_with_links = items[0].get("id") if items else None
+            if not vacancy_with_links:
+                return
+            print(f"  Using first vacancy anyway: {vacancy_with_links}")
+        
+        # Test SSR endpoint
+        print(f"\n📝 GET /api/render?path=/vacancies/{vacancy_with_links}")
+        resp_ssr = requests.get(
+            f"{BASE_URL}/render",
+            params={"path": f"/vacancies/{vacancy_with_links}"},
+            timeout=20
+        )
+        
+        log_test("GET /api/render returns 200", resp_ssr.status_code == 200, 
+                f"Status: {resp_ssr.status_code}", critical=True)
+        
+        if resp_ssr.status_code != 200:
+            return
+        
+        html = resp_ssr.text
+        
+        # Check for "Important Links" heading
+        has_important_links_heading = "Important Links" in html
+        log_test("SSR HTML contains 'Important Links' heading", has_important_links_heading, 
+                f"Found: {has_important_links_heading}")
+        
+        # Check for English labels
+        english_labels = [
+            "Official Notification PDF",
+            "Apply Online",
+            "Official Website",
+            "Registration Link"
+        ]
+        
+        found_labels = []
+        for label in english_labels:
+            if label in html:
+                found_labels.append(label)
+        
+        has_english_label = len(found_labels) > 0
+        log_test("SSR HTML contains at least one English label", has_english_label, 
+                f"Found: {', '.join(found_labels) if found_labels else 'None'}")
+        
+        # Check for "Click here" text
+        has_click_here = "Click here" in html
+        log_test("SSR HTML contains 'Click here' text", has_click_here, 
+                f"Found: {has_click_here}")
+        
+    except Exception as e:
+        log_test("SSR Important Links test", False, f"Exception: {e}")
+
+
+def test_6_admin_regenerate(token: str, vacancy_id: str):
+    """Test 6: Admin regenerate endpoint."""
+    print("\n" + "="*80)
+    print("TEST 6: Admin Regenerate Endpoint")
+    print("="*80)
     
-    # Check that visible Hindi content matches the API response
-    if expected_hindi_desc:
-        # Extract a sample from expected Hindi description (first 50 chars)
-        sample = expected_hindi_desc[:50].strip()
-        if sample:
-            # Check if this sample appears in the HTML (allowing for HTML encoding)
-            sample_in_html = sample in html
-            log_test("SSR HTML contains sample from hindi_description", sample_in_html, 
-                    f"Sample: {sample}")
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        
+        print(f"\n📝 POST /api/admin/vacancies/{vacancy_id}/hindi/regenerate")
+        resp = requests.post(
+            f"{BASE_URL}/admin/vacancies/{vacancy_id}/hindi/regenerate",
+            headers=headers,
+            timeout=30
+        )
+        
+        log_test("POST regenerate returns 200", resp.status_code == 200, 
+                f"Status: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            
+            # Check response contains regenerated Hindi content
+            has_hindi_intro = bool(data.get("hindi_intro"))
+            has_hindi_desc = bool(data.get("hindi_description"))
+            
+            log_test("Response contains hindi_intro", has_hindi_intro, 
+                    f"Length: {len(data.get('hindi_intro', ''))}")
+            log_test("Response contains hindi_description", has_hindi_desc, 
+                    f"Length: {len(data.get('hindi_description', ''))}")
+            
+            # Check English term protection in regenerated content
+            if has_hindi_intro:
+                is_clean, violations = check_english_terms_protection(data.get("hindi_intro", ""))
+                log_test("Regenerated hindi_intro has NO forbidden terms", is_clean, 
+                        f"Violations: {violations if violations else 'None'}")
+        
+    except Exception as e:
+        log_test("Admin regenerate test", False, f"Exception: {e}")
 
 
 def main():
     """Run all tests."""
     print("="*80)
-    print("HINDI CONTENT GENERATION BACKEND TESTS")
+    print("HR DIGITAL SERVICES - HINDI GENERATION FIXES - BACKEND TESTS")
     print("="*80)
     print(f"Base URL: {BASE_URL}")
     print()
     
-    # Login as admin
-    session = admin_login()
-    if not session:
-        print("\n❌ CRITICAL: Admin login failed. Cannot proceed with tests.")
-        return
-    
-    # Test 1: Lazy generation and cache
-    vacancy_id = test_lazy_generation_and_cache(session)
+    # Test 1: Get vacancy list
+    vacancy_id = test_1_get_vacancy_list()
     
     if not vacancy_id:
         print("\n❌ CRITICAL: Could not get vacancy ID. Stopping tests.")
+        print_summary()
         return
     
-    # Test 2: Structured facts stay English
-    test_structured_facts_stay_english(session, vacancy_id)
+    # Test 2: Vacancy detail fields
+    vacancy_data = test_2_vacancy_detail_fields(vacancy_id)
     
-    # Test 3: Admin regenerate
-    test_admin_regenerate(session, vacancy_id)
+    if not vacancy_data:
+        print("\n❌ CRITICAL: Could not get vacancy details. Stopping tests.")
+        print_summary()
+        return
     
-    # Test 4: Admin edit/override persists
-    test_admin_edit_override_persists(session, vacancy_id)
+    # Test 3: English-term protection on first vacancy
+    test_3_english_term_protection(vacancy_data)
     
-    # Test 5: SSR match
-    test_ssr_match(session, vacancy_id)
+    # Test 4: English-term protection across multiple vacancies
+    test_4_multiple_vacancies_english_terms()
+    
+    # Test 5: SSR Important Links
+    test_5_ssr_important_links()
+    
+    # Test 6: Admin regenerate
+    token = admin_login()
+    if token:
+        test_6_admin_regenerate(token, vacancy_id)
+    else:
+        log_test("Admin regenerate test", False, "Could not login as admin", critical=True)
     
     # Print summary
+    print_summary()
+
+
+def print_summary():
+    """Print test summary."""
     print("\n" + "="*80)
     print("TEST SUMMARY")
     print("="*80)
@@ -430,8 +453,14 @@ def main():
     print(f"📊 Total: {results['passed'] + results['failed']}")
     print()
     
+    if results['critical_failures']:
+        print("🚨 CRITICAL FAILURES:")
+        for test_name in results['critical_failures']:
+            print(f"  - {test_name}")
+        print()
+    
     if results['failed'] > 0:
-        print("❌ FAILED TESTS:")
+        print("❌ ALL FAILED TESTS:")
         for test in results['tests']:
             if not test['passed']:
                 print(f"  - {test['name']}")

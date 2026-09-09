@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import api from "@/lib/api";
 import { enhanceHtml, renderRichText } from "@/lib/htmlContent";
 import { useI18n } from "@/context/I18nContext";
@@ -7,7 +7,7 @@ import {
   FaArrowLeft, FaCalendarAlt, FaBuilding, FaGraduationCap, FaClock,
   FaFilePdf, FaExternalLinkAlt, FaRegClock, FaBriefcase, FaShareAlt, FaCheckCircle,
   FaUsers, FaRupeeSign, FaMoneyBillWave, FaListUl, FaMapMarkerAlt, FaUserCheck,
-  FaWhatsapp,
+  FaWhatsapp, FaGlobe, FaUserPlus, FaLanguage,
 } from "react-icons/fa";
 import SocialShare from "@/components/SocialShare";
 import { toast } from "sonner";
@@ -18,10 +18,12 @@ import RawHead from "@/components/RawHead";
 import Reviews from "@/components/Reviews";
 import ChannelLinks from "@/components/ChannelLinks";
 
+// Important-link labels stay in ENGLISH even on the Hindi page (Fix 2).
 const KIND_META = {
-  apply:        { hi: "ऑनलाइन आवेदन",   en: "Apply Online",       icon: FaCheckCircle,     cls: "bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/15", iconCls: "text-emerald-400" },
-  notification: { hi: "अधिसूचना PDF",    en: "Notification PDF",   icon: FaFilePdf,         cls: "bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/15",     iconCls: "text-amber-400" },
-  official:     { hi: "आधिकारिक वेबसाइट", en: "Official Website",  icon: FaExternalLinkAlt, cls: "bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/15",           iconCls: "text-sky-400" },
+  apply:        { hi: "Apply Online",             en: "Apply Online",             icon: FaCheckCircle,     cls: "bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/15", iconCls: "text-emerald-400" },
+  registration: { hi: "Registration",             en: "Registration",             icon: FaUserPlus,        cls: "", iconCls: "" },
+  notification: { hi: "Official Notification",     en: "Official Notification",     icon: FaFilePdf,         cls: "", iconCls: "" },
+  official:     { hi: "Official Website",          en: "Official Website",          icon: FaGlobe,           cls: "bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/15",           iconCls: "text-sky-400" },
 };
 
 const daysRemaining = (txt) => {
@@ -37,11 +39,32 @@ const daysRemaining = (txt) => {
 
 const VacancyDetail = () => {
   const { id } = useParams();
-  const { lang } = useI18n();
+  const { lang: globalLang } = useI18n();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Per-page language toggle (Fix 4). URL `?lang=en` shows the English version;
+  // default is Hindi. All labels below read this `lang` so the whole page flips.
+  const [pageLang, setPageLang] = useState(
+    searchParams.get("lang") === "en" ? "en" : (globalLang === "en" ? "en" : "hi")
+  );
+  const lang = pageLang;
   const [v, setV] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
+
+  // Keep the URL in sync so the choice is shareable / restorable, without reload.
+  const switchLang = (next) => {
+    setPageLang(next);
+    const params = new URLSearchParams(searchParams);
+    if (next === "en") params.set("lang", "en");
+    else params.delete("lang");
+    setSearchParams(params, { replace: true });
+  };
+
+  useEffect(() => {
+    const q = searchParams.get("lang");
+    setPageLang(q === "en" ? "en" : "hi");
+  }, [searchParams]);
 
   useEffect(() => {
     let alive = true;
@@ -179,6 +202,7 @@ const VacancyDetail = () => {
         keywords={v.focus_keyword || undefined}
         path={`/vacancies/${v.id || id}`}
         type="article"
+        noindex={lang === "en"}
         jsonLd={jobPostingJsonLd}
       />
       {v.custom_head && <RawHead html={v.custom_head} />}
@@ -282,11 +306,36 @@ const VacancyDetail = () => {
           {v.heading || v.title}
         </h1>
 
-        {(v.hindi_intro || v.description) && (
+        {/* Language toggle (Fix 4) — read this job in Hindi or English */}
+        <div className="inline-flex items-center rounded-full border border-white/15 bg-white/5 p-1 mb-4" data-testid="lang-toggle">
+          <FaLanguage className="text-slate-400 mx-2 shrink-0" />
+          <button
+            type="button"
+            onClick={() => switchLang("hi")}
+            className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${lang === "hi" ? "bg-emerald-500 text-white shadow" : "text-slate-300 hover:text-white"}`}
+            data-testid="lang-toggle-hi"
+          >
+            हिंदी में पढ़ें
+          </button>
+          <button
+            type="button"
+            onClick={() => switchLang("en")}
+            className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${lang === "en" ? "bg-emerald-500 text-white shadow" : "text-slate-300 hover:text-white"}`}
+            data-testid="lang-toggle-en"
+          >
+            Read in English
+          </button>
+        </div>
+
+        {(v.hindi_intro || v.english_intro || v.description) && (
           <div
             className="text-slate-300 text-sm md:text-base leading-relaxed mb-4 vacancy-article"
             data-testid="vacancy-description"
-            dangerouslySetInnerHTML={{ __html: v.hindi_intro ? renderRichText(v.hindi_intro) : enhanceHtml(v.description) }}
+            dangerouslySetInnerHTML={{
+              __html: lang === "en"
+                ? (v.english_intro ? renderRichText(v.english_intro) : enhanceHtml(v.description))
+                : (v.hindi_intro ? renderRichText(v.hindi_intro) : enhanceHtml(v.description)),
+            }}
           />
         )}
       </div>
@@ -427,24 +476,22 @@ const VacancyDetail = () => {
       {Array.isArray(v.important_links) && v.important_links.length > 0 && (
         <div className="glass p-5 mb-6" data-testid="vacancy-links">
           <div className="section-eyebrow mb-3">{lang === "hi" ? "महत्वपूर्ण लिंक" : "Important Links"}</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {v.important_links.map((l, i) => {
               const href = l.href || l.url;
-              const text = l.text || l.label || href;
               const isPdf = l.type === "pdf" || (href || "").toLowerCase().split("?")[0].endsWith(".pdf");
-              const meta = KIND_META[l.kind] || KIND_META.official;
-              const Icon = isPdf ? FaFilePdf : meta.icon;
-              const eyebrow = l.kind ? (lang === "hi" ? meta.hi : meta.en) : (isPdf ? "PDF" : (lang === "hi" ? "लिंक" : "Link"));
+              const meta = KIND_META[l.kind] || (isPdf ? KIND_META.notification : KIND_META.official);
+              const label = meta.en;
               return (
-                <a key={i} href={href} target="_blank" rel="noreferrer nofollow"
-                  className={`p-3 rounded-lg border flex items-center gap-3 transition hover:scale-[1.01] ${isPdf ? "bg-red-500/10 border-red-500/30 hover:bg-red-500/15" : meta.cls}`}
-                  data-testid={`imp-link-${l.kind || l.type || "link"}-${i}`}>
-                  <Icon className={`text-lg shrink-0 ${isPdf ? "text-red-400" : meta.iconCls}`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs uppercase tracking-wide text-slate-400">{eyebrow}</div>
-                    <div className="text-sm text-white truncate">{text}</div>
-                  </div>
-                  <FaExternalLinkAlt className="text-xs text-slate-500 shrink-0" />
+                <a
+                  key={i}
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer nofollow"
+                  className="block w-full text-center px-6 py-4 rounded-2xl border border-slate-300 bg-white text-emerald-700 font-bold text-base md:text-lg transition hover:border-emerald-500 hover:shadow-md hover:-translate-y-0.5"
+                  data-testid={`imp-link-${l.kind || l.type || "link"}-${i}`}
+                >
+                  {label}
                 </a>
               );
             })}
@@ -461,40 +508,74 @@ const VacancyDetail = () => {
         </div>
       )}
 
-      {/* Hindi descriptive content (auto-generated: templates + AI rewrite) */}
-      {(v.hindi_description || v.hindi_how_to_apply || v.hindi_selection_process) && (
-        <div className="glass p-6 mb-6" data-testid="vacancy-hindi">
-          <div className="section-eyebrow mb-3">विवरण (हिंदी में)</div>
-          {v.hindi_description && (
-            <div className="mb-5" data-testid="hindi-description">
-              <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">पूरा विवरण</h3>
-              <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.hindi_description) }} />
-            </div>
-          )}
-          {v.hindi_how_to_apply && (
-            <div className="mb-5" data-testid="hindi-how-to-apply">
-              <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">आवेदन कैसे करें</h3>
-              <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.hindi_how_to_apply) }} />
-            </div>
-          )}
-          {v.hindi_selection_process && (
-            <div data-testid="hindi-selection-process">
-              <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">चयन प्रक्रिया</h3>
-              <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.hindi_selection_process) }} />
-            </div>
-          )}
-        </div>
-      )}
+      {/* Descriptive content (auto-generated: templates + AI rewrite) — flips with the toggle */}
+      {lang === "hi"
+        ? (v.hindi_description || v.hindi_how_to_apply || v.hindi_selection_process) && (
+          <div className="glass p-6 mb-6" data-testid="vacancy-hindi">
+            <div className="section-eyebrow mb-3">विवरण (हिंदी में)</div>
+            {v.hindi_description && (
+              <div className="mb-5" data-testid="hindi-description">
+                <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">पूरा विवरण</h3>
+                <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.hindi_description) }} />
+              </div>
+            )}
+            {v.hindi_how_to_apply && (
+              <div className="mb-5" data-testid="hindi-how-to-apply">
+                <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">आवेदन कैसे करें</h3>
+                <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.hindi_how_to_apply) }} />
+              </div>
+            )}
+            {v.hindi_selection_process && (
+              <div data-testid="hindi-selection-process">
+                <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">चयन प्रक्रिया</h3>
+                <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.hindi_selection_process) }} />
+              </div>
+            )}
+          </div>
+        )
+        : (v.content_html || v.english_description || v.english_how_to_apply || v.english_selection_process || v.description) && (
+          <div className="glass p-6 mb-6" data-testid="vacancy-english">
+            <div className="section-eyebrow mb-3">Details (in English)</div>
+            {(v.content_html || v.english_description || v.description) && (
+              <div className="mb-5" data-testid="english-description">
+                <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">Full Description</h3>
+                <div
+                  className="vacancy-article text-sm"
+                  dangerouslySetInnerHTML={{
+                    __html: v.content_html
+                      ? enhanceHtml(v.content_html)
+                      : (v.english_description ? renderRichText(v.english_description) : enhanceHtml(v.description)),
+                  }}
+                />
+              </div>
+            )}
+            {v.english_how_to_apply && (
+              <div className="mb-5" data-testid="english-how-to-apply">
+                <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">How to Apply</h3>
+                <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.english_how_to_apply) }} />
+              </div>
+            )}
+            {v.english_selection_process && (
+              <div data-testid="english-selection-process">
+                <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">Selection Process</h3>
+                <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.english_selection_process) }} />
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* Full article content */}
+      {/* Full article content (English source) — shown standalone only in Hindi
+          mode; in English mode it is already rendered inside the block above. */}
       {v.content_html ? (
-        <div className="glass p-6 mb-6" data-testid="vacancy-content">
-          <div className="section-eyebrow mb-3">{lang === "hi" ? "पूरा विवरण" : "Full Details"}</div>
-          <div
-            className="vacancy-article"
-            dangerouslySetInnerHTML={{ __html: enhanceHtml(v.content_html) }}
-          />
-        </div>
+        lang === "hi" ? (
+          <div className="glass p-6 mb-6" data-testid="vacancy-content">
+            <div className="section-eyebrow mb-3">पूरा विवरण (English)</div>
+            <div
+              className="vacancy-article"
+              dangerouslySetInnerHTML={{ __html: enhanceHtml(v.content_html) }}
+            />
+          </div>
+        ) : null
       ) : v.row_text ? (
         <div className="glass p-6 mb-6">
           <div className="section-eyebrow mb-3">{lang === "hi" ? "सारांश" : "Summary"}</div>

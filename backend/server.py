@@ -15,7 +15,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 
 import httpx
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Body, UploadFile, File, Form
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Body, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import FileResponse, PlainTextResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
@@ -851,8 +851,33 @@ async def vacancies_stats():
     }
 
 
+async def _enrich_vacancy_bg(vac_id: str):
+    """Background enrichment: scrape article detail (if missing) and (re)generate
+    Hindi content via templates + LLM. Runs AFTER the response is sent so opening
+    a vacancy is instant. Safe to fail silently."""
+    try:
+        oid = ObjectId(vac_id)
+        v = await db.vacancies.find_one({"_id": oid})
+        if not v:
+            return
+        # Scrape full article detail if we don't have it yet.
+        if not v.get("content_html") and v.get("url") and v.get("source") != "manual":
+            detail = await fetch_article_detail(v["url"])
+            if detail:
+                await db.vacancies.update_one({"_id": oid}, {"$set": detail})
+                v.update(detail)
+            else:
+                await db.vacancies.update_one({"_id": oid}, {"$set": {"detail_attempted_at": datetime.now(timezone.utc)}})
+        # Full Hindi generation (templates + LLM rewrite) unless admin-edited.
+        if not v.get("hindi_edited"):
+            hindi = await hindi_content.generate_hindi_content(v)
+            await db.vacancies.update_one({"_id": oid}, {"$set": hindi})
+    except Exception as e:
+        log.warning(f"Background enrich failed for {vac_id}: {e}")
+
+
 @api.get("/vacancies/{vac_id}")
-async def get_vacancy_detail(vac_id: str):
+async def get_vacancy_detail(vac_id: str, background_tasks: BackgroundTasks):
     try:
         oid = ObjectId(vac_id)
     except Exception:
@@ -860,38 +885,45 @@ async def get_vacancy_detail(vac_id: str):
     v = await db.vacancies.find_one({"_id": oid})
     if not v:
         raise HTTPException(404, "Vacancy not found")
-    # Lazy-scrape article detail on first view, then cache for 24h.
-    # Also cache failed attempts for 1h to avoid re-hitting a slow/blocked upstream on every view.
+
     now_utc = datetime.now(timezone.utc)
-    prev_fetched = v.get("detail_fetched_at")
-    if prev_fetched and prev_fetched.tzinfo is None:
-        prev_fetched = prev_fetched.replace(tzinfo=timezone.utc)
     prev_attempt = v.get("detail_attempted_at")
     if prev_attempt and prev_attempt.tzinfo is None:
         prev_attempt = prev_attempt.replace(tzinfo=timezone.utc)
-
-    has_content = bool(v.get("content_html"))
-    stale = prev_fetched and (now_utc - prev_fetched).total_seconds() > 86400
     recently_attempted = prev_attempt and (now_utc - prev_attempt).total_seconds() < 3600
-    needs_detail = (not has_content or stale) and not recently_attempted
 
-    if needs_detail and v.get("url") and v.get("source") != "manual":
-        detail = await fetch_article_detail(v["url"])
-        if detail:
-            await db.vacancies.update_one({"_id": oid}, {"$set": detail})
-            v.update(detail)
-        else:
-            # Negative-cache: mark attempted so we do not re-scrape for 1 hour
-            await db.vacancies.update_one({"_id": oid}, {"$set": {"detail_attempted_at": now_utc}})
-    # ─── Lazy Hindi content (Hybrid: templates + LLM), cached in DB ───
-    # Generate once on first view; never regenerate if an admin has edited it.
-    if not v.get("hindi_edited") and not v.get("hindi_intro"):
-        try:
-            hindi = await hindi_content.generate_hindi_content(v)
-            await db.vacancies.update_one({"_id": oid}, {"$set": hindi})
-            v.update(hindi)
-        except Exception as e:
-            log.warning(f"Hindi generation failed for {vac_id}: {e}")
+    # ─── Instant-response strategy ───
+    # Heavy work (article scraping + LLM Hindi rewrite) is deferred to a
+    # background task so the page opens immediately. On this view the user sees
+    # instant template content; richer content appears on the next view.
+    stale_hindi = (v.get("hindi_ver") or 0) < hindi_content.HINDI_CONTENT_VER
+    need_detail = not v.get("content_html") and bool(v.get("url")) and v.get("source") != "manual" and not recently_attempted
+    need_hindi = not v.get("hindi_edited") and (not v.get("hindi_intro") or stale_hindi)
+
+    set_now = {}
+    # Ensure Hindi templates exist RIGHT NOW (instant, no LLM) so nothing is blank.
+    if not v.get("hindi_edited") and (not v.get("hindi_intro") or stale_hindi):
+        base = hindi_content.build_templates(v)
+        base["hindi_source"] = v.get("hindi_source") if v.get("hindi_source") == "llm" else "template"
+        base["hindi_ver"] = hindi_content.HINDI_CONTENT_VER  # optimistic: stops re-scheduling
+        # keep any existing LLM description until the bg task refreshes it
+        if v.get("hindi_source") == "llm" and v.get("hindi_description"):
+            base["hindi_description"] = v["hindi_description"]
+        set_now.update(base)
+        v.update(base)
+
+    # English descriptive fields (instant, deterministic).
+    if not v.get("english_intro"):
+        eng = hindi_content.build_english_templates(v)
+        set_now.update(eng)
+        v.update(eng)
+
+    if set_now:
+        await db.vacancies.update_one({"_id": oid}, {"$set": set_now})
+
+    # Schedule background enrichment (detail scrape + LLM Hindi) if needed.
+    if need_detail or need_hindi:
+        background_tasks.add_task(_enrich_vacancy_bg, vac_id)
 
     await db.vacancies.update_one({"_id": oid}, {"$inc": {"views": 1}})
     v["views"] = (v.get("views") or 0) + 1

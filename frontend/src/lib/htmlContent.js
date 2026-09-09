@@ -15,12 +15,23 @@ function escapeHtml(s) {
 // Convert inline Markdown tokens in a plain string into HTML.
 function inlineMarkdown(text) {
   let s = escapeHtml(text);
-  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>'); // [label](url)
+  // Convert links FIRST and stash them as opaque tokens so the following
+  // bold/italic/code passes cannot corrupt URLs that contain '_' or '*'
+  // (e.g. https://site/apply_online_form would otherwise get an <em> injected
+  // into its href and break the link).
+  const store = [];
+  const stash = (html) => {
+    const token = `\uE000L${store.length}\uE001`;
+    store.push(html);
+    return token;
+  };
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, label, url) => stash(`<a href="${url}">${label}</a>`)); // [label](url)
   s = s.replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>"); // **bold**
   s = s.replace(/__([^_]+?)__/g, "<strong>$1</strong>"); // __bold__
   s = s.replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, "$1<em>$2</em>"); // *italic*
   s = s.replace(/(^|[^_\w])_(?!\s)([^_]+?)_(?![_\w])/g, "$1<em>$2</em>"); // _italic_
   s = s.replace(/`([^`]+?)`/g, "<code>$1</code>"); // `code`
+  s = s.replace(/\uE000L(\d+)\uE001/g, (m, i) => store[Number(i)]); // restore links
   return s;
 }
 
@@ -290,6 +301,47 @@ export function renderRichText(text) {
 }
 
 
+// Bold the protected English technical/official terms wherever they appear in
+// the content (Hindi or English) so they visually stand out — e.g. Apply Online,
+// Registration Link, Official Notification PDF, Official Website, PDF, Result...
+const KEY_TERMS = [
+  "Official Notification PDF", "Notification PDF", "Registration Link", "Apply Online",
+  "Apply Link", "Official Website", "Online Form", "Admit Card", "Answer Key",
+  "Start Date", "Last Date", "Syllabus", "Result", "PDF",
+];
+const KEY_TERMS_RE = new RegExp(
+  "\\b(" + KEY_TERMS.map((t) => t.replace(/ /g, "\\s+")).join("|") + ")\\b",
+  "g"
+);
+
+function boldKeyTerms(root, doc) {
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((node) => {
+    const p = node.parentElement;
+    if (!p || p.closest("a, code, pre, strong, b, h1, h2, h3, h4, table, thead, tbody, tr, td, th")) return;
+    const text = node.nodeValue;
+    if (!text) return;
+    KEY_TERMS_RE.lastIndex = 0;
+    if (!KEY_TERMS_RE.test(text)) return;
+    KEY_TERMS_RE.lastIndex = 0;
+    const frag = doc.createDocumentFragment();
+    let last = 0, m;
+    while ((m = KEY_TERMS_RE.exec(text))) {
+      const before = text.slice(last, m.index);
+      if (before) frag.appendChild(doc.createTextNode(before));
+      const strong = doc.createElement("strong");
+      strong.textContent = m[0];
+      frag.appendChild(strong);
+      last = m.index + m[0].length;
+    }
+    const after = text.slice(last);
+    if (after) frag.appendChild(doc.createTextNode(after));
+    node.parentNode.replaceChild(frag, node);
+  });
+}
+
 export function enhanceHtml(html) {
   if (!html) return "";
   if (typeof window === "undefined" || typeof DOMParser === "undefined") return html;
@@ -361,6 +413,9 @@ export function enhanceHtml(html) {
       a.setAttribute("target", "_blank");
       a.setAttribute("rel", "noreferrer nofollow");
     });
+
+    // 3) Bold the protected English technical/official terms so they stand out.
+    boldKeyTerms(root, doc);
 
     return root.innerHTML;
   } catch {

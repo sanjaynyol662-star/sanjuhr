@@ -677,7 +677,9 @@ def _extract_important_links(article) -> list[dict]:
         kind = None
         if low_href.endswith(".pdf") or "notification" in low_text or "advertisement" in low_text:
             kind = "notification"
-        elif "apply" in low_text or "apply" in low_href or "registration" in low_text:
+        elif "registration" in low_text or "register" in low_text or "registration" in low_href:
+            kind = "registration"
+        elif "apply" in low_text or "apply" in low_href:
             kind = "apply"
         elif "official" in low_text or "website" in low_text:
             kind = "official"
@@ -688,8 +690,8 @@ def _extract_important_links(article) -> list[dict]:
             continue
         seen.add(key)
         picked.append({"kind": kind, "text": text[:120] or kind.title(), "href": href})
-    # Order: apply > notification > official
-    order = {"apply": 0, "notification": 1, "official": 2}
+    # Order: apply > registration > notification > official
+    order = {"apply": 0, "registration": 1, "notification": 2, "official": 3}
     picked.sort(key=lambda x: order.get(x["kind"], 9))
     return picked[:12]
 
