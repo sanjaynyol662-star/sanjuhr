@@ -194,6 +194,24 @@ const VacancyDetail = () => {
     url: `https://hrdigitalservices.in/vacancies/${v.id || id}`,
   };
 
+  // ─── Table of Contents (quick-jump chips) ───
+  const scrollToSection = (secId) => {
+    const el = document.getElementById(secId);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const tocItems = [
+    { id: "sec-overview", hi: "अवलोकन", en: "Overview", show: true },
+    { id: "sec-dates", hi: "महत्वपूर्ण तिथियाँ", en: "Important Dates", show: !!(v.structured?.apply_start || v.structured?.apply_end || v.last_date_text || v.post_date_text) },
+    { id: "sec-vacancy", hi: "पद विवरण", en: "Vacancy", show: !!(v.structured?.total_posts_num ?? v.structured?.total_posts) },
+    { id: "sec-eligibility", hi: "योग्यता", en: "Eligibility", show: !!v.qualification },
+    { id: "sec-honorarium", hi: "वेतन", en: "Honorarium", show: !!v.structured?.salary },
+    { id: "sec-age", hi: "आयु सीमा", en: "Age Limit", show: !!v.structured?.age_limit },
+    { id: "sec-selection", hi: "चयन", en: "Selection", show: !!v.structured?.selection },
+    { id: "sec-apply", hi: "आवेदन कैसे करें", en: "How to Apply", show: !!(v.hindi_how_to_apply || v.english_how_to_apply) },
+    { id: "sec-instructions", hi: "निर्देश", en: "Instructions", show: !!(v.hindi_description || v.english_description || v.content_html || v.description) },
+    { id: "sec-links", hi: "लिंक", en: "Links", show: Array.isArray(v.important_links) && v.important_links.length > 0 },
+  ].filter((t) => t.show);
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-10" data-testid="vacancy-detail-page">
       <SEO
@@ -282,7 +300,7 @@ const VacancyDetail = () => {
       ) : null}
 
       {/* Header card */}
-      <div className="glass p-6 mb-6" data-testid="vacancy-detail-header">
+      <div id="sec-overview" className="glass p-6 mb-6 scroll-mt-24" data-testid="vacancy-detail-header">
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <span className="chip uppercase !text-[10px]">{v.category || "Job"}</span>
           {v.organization && (
@@ -340,13 +358,36 @@ const VacancyDetail = () => {
         )}
       </div>
 
+      {/* Table of Contents — quick jump to any section */}
+      {tocItems.length > 1 && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 mb-6" data-testid="vacancy-toc">
+          <div className="text-emerald-700 font-extrabold text-lg mb-3 flex items-center gap-2">
+            <FaListUl className="text-emerald-600" />
+            {lang === "hi" ? "विषय सूची" : "Table of Contents"}
+          </div>
+          <div className="flex flex-wrap gap-2.5">
+            {tocItems.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => scrollToSection(t.id)}
+                className="px-4 py-2 rounded-full border border-emerald-200 bg-white text-emerald-800 font-semibold text-sm transition hover:border-emerald-500 hover:bg-emerald-500 hover:text-white hover:shadow-md"
+                data-testid={`toc-${t.id}`}
+              >
+                {lang === "hi" ? t.hi : t.en}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* WhatsApp Smart Engine — auto summary + channel join */}
       <WhatsAppSummaryCard summary={v.whatsapp_summary} vacancy={v} lang={lang} />
 
       {/* Hero stat cards — the "at-a-glance" facts */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" data-testid="vacancy-stats">
+      <div id="sec-dates" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 scroll-mt-24" data-testid="vacancy-stats">
         {/* Total posts — hero */}
-        <div className="stat-card stat-emerald md:col-span-1">
+        <div id="sec-vacancy" className="stat-card stat-emerald md:col-span-1 scroll-mt-24">
           <div className="stat-icon"><FaUsers /></div>
           <div className="stat-label">{lang === "hi" ? "कुल पद" : "Total Posts"}</div>
           <div className="stat-value">{v.structured?.total_posts_num ?? v.structured?.total_posts ?? "—"}</div>
@@ -390,7 +431,7 @@ const VacancyDetail = () => {
       {(v.structured?.salary || v.structured?.age_limit || v.qualification || v.structured?.selection || v.structured?.job_location) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6" data-testid="vacancy-secondary">
           {v.structured?.salary && (
-            <div className="detail-row">
+            <div id="sec-honorarium" className="detail-row scroll-mt-24">
               <div className="detail-icon bg-emerald-500/10 text-emerald-400"><FaMoneyBillWave /></div>
               <div className="flex-1 min-w-0">
                 <div className="detail-label">{lang === "hi" ? "वेतन / पे स्केल" : "Salary / Pay Scale"}</div>
@@ -399,7 +440,7 @@ const VacancyDetail = () => {
             </div>
           )}
           {v.qualification && (
-            <div className="detail-row">
+            <div id="sec-eligibility" className="detail-row scroll-mt-24">
               <div className="detail-icon bg-sky-500/10 text-sky-400"><FaGraduationCap /></div>
               <div className="flex-1 min-w-0">
                 <div className="detail-label">{lang === "hi" ? "शैक्षणिक योग्यता" : "Qualification"}</div>
@@ -408,7 +449,7 @@ const VacancyDetail = () => {
             </div>
           )}
           {v.structured?.age_limit && (
-            <div className="detail-row">
+            <div id="sec-age" className="detail-row scroll-mt-24">
               <div className="detail-icon bg-amber-500/10 text-amber-400"><FaUserCheck /></div>
               <div className="flex-1 min-w-0">
                 <div className="detail-label">{lang === "hi" ? "आयु सीमा" : "Age Limit"}</div>
@@ -417,7 +458,7 @@ const VacancyDetail = () => {
             </div>
           )}
           {v.structured?.selection && (
-            <div className="detail-row">
+            <div id="sec-selection" className="detail-row scroll-mt-24">
               <div className="detail-icon bg-violet-500/10 text-violet-400"><FaListUl /></div>
               <div className="flex-1 min-w-0">
                 <div className="detail-label">{lang === "hi" ? "चयन प्रक्रिया" : "Selection Process"}</div>
@@ -474,7 +515,7 @@ const VacancyDetail = () => {
 
       {/* Important action links */}
       {Array.isArray(v.important_links) && v.important_links.length > 0 && (
-        <div className="glass p-5 mb-6" data-testid="vacancy-links">
+        <div id="sec-links" className="glass p-5 mb-6 scroll-mt-24" data-testid="vacancy-links">
           <div className="section-eyebrow mb-3">{lang === "hi" ? "महत्वपूर्ण लिंक" : "Important Links"}</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {v.important_links.map((l, i) => {
@@ -514,13 +555,13 @@ const VacancyDetail = () => {
           <div className="glass p-6 mb-6" data-testid="vacancy-hindi">
             <div className="section-eyebrow mb-3">विवरण (हिंदी में)</div>
             {v.hindi_description && (
-              <div className="mb-5" data-testid="hindi-description">
+              <div id="sec-instructions" className="mb-5 scroll-mt-24" data-testid="hindi-description">
                 <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">पूरा विवरण</h3>
                 <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.hindi_description) }} />
               </div>
             )}
             {v.hindi_how_to_apply && (
-              <div className="mb-5" data-testid="hindi-how-to-apply">
+              <div id="sec-apply" className="mb-5 scroll-mt-24" data-testid="hindi-how-to-apply">
                 <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">आवेदन कैसे करें</h3>
                 <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.hindi_how_to_apply) }} />
               </div>
@@ -537,7 +578,7 @@ const VacancyDetail = () => {
           <div className="glass p-6 mb-6" data-testid="vacancy-english">
             <div className="section-eyebrow mb-3">Details (in English)</div>
             {(v.content_html || v.english_description || v.description) && (
-              <div className="mb-5" data-testid="english-description">
+              <div id="sec-instructions" className="mb-5 scroll-mt-24" data-testid="english-description">
                 <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">Full Description</h3>
                 <div
                   className="vacancy-article text-sm"
@@ -550,7 +591,7 @@ const VacancyDetail = () => {
               </div>
             )}
             {v.english_how_to_apply && (
-              <div className="mb-5" data-testid="english-how-to-apply">
+              <div id="sec-apply" className="mb-5 scroll-mt-24" data-testid="english-how-to-apply">
                 <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">How to Apply</h3>
                 <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.english_how_to_apply) }} />
               </div>
