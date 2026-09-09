@@ -40,7 +40,15 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  /* Prevent any stray wide element (sliders, banners, long strings) from making
+     the document wider than the viewport, which forces mobile browsers to
+     shrink-to-fit and show the desktop layout zoomed-out. `clip` does NOT create
+     a scroll container, so sticky headers keep working. */
+  overflow-x: clip;
+  max-width: 100%;
 }
+/* Media never overflows its container on small screens */
+img, video, canvas, svg, iframe { max-width: 100%; }
 body {
   background:
     radial-gradient(1200px 700px at 80% -10%, var(--emerald-soft), transparent 60%),
