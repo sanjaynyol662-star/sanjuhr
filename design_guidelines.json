@@ -1,0 +1,174 @@
+{
+  "project_name": "Haryana Enterprises - WhatsApp Smart Engine & Job/Solar Portal",
+  "archetype": "The Swiss & High-Contrast Performance Portal (Government Job Hub + Solar Business)",
+  "theme": {
+    "default_mode": "light",
+    "supported_modes": ["light", "dark"],
+    "primary_brand_color": "#16a34a",
+    "whatsapp_accent": "#25D366",
+    "solar_accent": "#d97706",
+    "forbidden_colors": ["#7351B7", "#1B93A4"]
+  },
+  "typography": {
+    "font_family_heading": "Outfit, sans-serif",
+    "font_family_body": "Inter, sans-serif",
+    "font_family_mono": "JetBrains Mono, monospace",
+    "font_family_hindi_support": "'Noto Sans Devanagari', 'Hind', sans-serif",
+    "google_fonts_cdn": "https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap",
+    "text_sizes": {
+      "hero_heading": "text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight",
+      "section_heading": "text-2xl sm:text-3xl font-bold tracking-tight",
+      "card_heading": "text-lg sm:text-xl font-semibold",
+      "body": "text-sm sm:text-base leading-relaxed text-slate-700 dark:text-slate-300",
+      "caption": "text-xs font-medium tracking-wide uppercase text-slate-500 dark:text-slate-400"
+    }
+  },
+  "colors": {
+    "background_light": "#F8FAFC",
+    "background_dark": "#0F172A",
+    "surface_light": "#FFFFFF",
+    "surface_dark": "#1E293B",
+    "border_light": "#E2E8F0",
+    "border_dark": "#334155",
+    "brand_primary": {
+      "DEFAULT": "#16a34a",
+      "hover": "#15803d",
+      "light": "#f0fdf4",
+      "dark_text": "#4ade80"
+    },
+    "whatsapp_brand": {
+      "DEFAULT": "#25D366",
+      "hover": "#1ebd58",
+      "badge_bg": "#dcfce7",
+      "badge_text": "#15803d"
+    },
+    "solar_brand": {
+      "DEFAULT": "#d97706",
+      "hover": "#b45309",
+      "badge_bg": "#fef3c7",
+      "badge_text": "#92400e"
+    },
+    "text": {
+      "main": "#0f172a",
+      "muted": "#64748b",
+      "inverted": "#ffffff"
+    }
+  },
+  "layout_and_spacing": {
+    "container_max_width": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "section_spacing": "py-10 sm:py-16 lg:py-20",
+    "pagination_limit": 20,
+    "header_height": "h-16 sm:h-20",
+    "bento_grid_mode": "Tetris Grid & Responsive Cards (1 col mobile -> 2 col tablet -> 3/4 col desktop)"
+  },
+  "whatsapp_smart_engine": {
+    "format_template": "🔥 [Job Name] 🔥 | ✅ कुल पद: [Total Posts] | ✅ योग्यता: [Qualification] | 📅 आखरी तारीख: [Last Date] | 👇 लिंक: [Job Link]",
+    "whatsapp_channel_url": "https://whatsapp.com/channel/0029Va4Owji5Ui2bLEktCl1C",
+    "copy_summary_feature": "Auto-generated formatted summary card on Job Details & Admin Panel with 1-click Copy to Clipboard button and instant Toast notification.",
+    "cta_button": {
+      "text": "Join WhatsApp Channel",
+      "bg_color": "bg-[#25D366] hover:bg-[#1ebd58]",
+      "text_color": "text-white font-bold",
+      "icon": "MessageCircle / Phone / MessageSquare",
+      "pulse_effect": "relative overflow-hidden before:absolute before:inset-0 before:bg-white/20 before:animate-pulse"
+    }
+  },
+  "seo_shuffler_and_rank_math": {
+    "rank_math_card": {
+      "fields": [
+        "SEO Title (Custom Title)",
+        "Focus Keyword",
+        "Meta Description",
+        "Permalink / Slug",
+        "Robots Index Toggle",
+        "Canonical URL"
+      ],
+      "score_gauge": "Live SEO Score indicator (0-100) with color coding (Red <50, Orange 50-79, Green 80+)",
+      "checks": [
+        "Focus Keyword in Title",
+        "Focus Keyword in Description",
+        "Title length (50-60 chars)",
+        "Description length (120-160 chars)",
+        "Title Uniqueness / Rotator Status"
+      ]
+    },
+    "title_rotator_shuffler": "Rotates synonyms (e.g. 'Haryana Govt Jobs', 'Sarkari Bharti Haryana', 'Latest Haryana Vacancy', 'HKRN Recruitment') to bypass duplicate content penalties on Google."
+  },
+  "pages_and_navigation": {
+    "routes": [
+      {
+        "path": "/",
+        "name": "Vacancy Listing Homepage",
+        "description": "Main homepage displaying government job listings with filters (Department, Qualification, District, Last Date), search bar, pagination (20 per page), featured job banners, and WhatsApp Channel banner."
+      },
+      {
+        "path": "/job/:id",
+        "name": "Job Detail Page",
+        "description": "Full job details, official notification links, qualification breakdown, Rank Math SEO meta, WhatsApp Summary Card with Copy button, and prominent 'Join WhatsApp Channel' CTA buttons."
+      },
+      {
+        "path": "/solar",
+        "name": "Solar Services Landing Page",
+        "description": "Dedicated solar business page with rooftop installation services, commercial solar solutions, solar subsidy calculator, photo gallery, testimonials, and quote inquiry form."
+      },
+      {
+        "path": "/blogs",
+        "name": "Blogs Section",
+        "description": "Hinglish/Hindi articles regarding Haryana exam prep, HKRN updates, Solar government subsidies, and career guidance."
+      },
+      {
+        "path": "/blogs/:slug",
+        "name": "Blog Article Detail Page",
+        "description": "Rich article reader with table of contents, author badge, social share buttons, and WhatsApp channel recruitment banner."
+      },
+      {
+        "path": "/admin",
+        "name": "Admin Panel",
+        "description": "Management dashboard with email/password auth, Manage Jobs (with Rank Math SEO + WhatsApp summary generator), Manage Blogs (rich text + image upload), Resume/CV Templates Uploader, and API Jobs Sync trigger."
+      }
+    ],
+    "header_navigation": [
+      { "label": "All Jobs", "link": "/" },
+      { "label": "Solar Services", "link": "/solar" },
+      { "label": "Blogs", "link": "/blogs" },
+      { "label": "CV Templates", "link": "/#cv-templates" },
+      { "label": "Join WhatsApp Channel", "link": "https://whatsapp.com/channel/0029Va4Owji5Ui2bLEktCl1C", "is_cta": true }
+    ]
+  },
+  "image_urls": {
+    "solar_hero": "https://images.unsplash.com/photo-1651999397372-cbe025d5ad9b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwxfHxzb2xhciUyMHBhbmVscyUyMHJvb2Z0b3AlMjBJbnN0YWxsYXRpb24lMjBJbmRpYXxlbnwwfHx8fDE3ODg0NDI0Njl8MA&ixlib=rb-4.1.0&q=85",
+    "solar_commercial": "https://images.unsplash.com/photo-1705878565540-99d93b573fd2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwyfHxzb2xhciUyMHBhbmVscyUyMHJvb2Z0b3AlMjBJbnN0YWxsYXRpb24lMjBJbmRpYXxlbnwwfHx8fDE3ODg0NDI0Njl8MA&ixlib=rb-4.1.0&q=85",
+    "government_job_office": "https://images.unsplash.com/photo-1560264357-8d9202250f21?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwxfHxnb3Zlcm5tZW50JTIwb2ZmaWNlJTIwam9iJTIwZGVzayUyMGNvbXB1dGVyfGVufDB8fHx8MTc4ODQ0MjQ2OXww&ixlib=rb-4.1.0&q=85",
+    "government_job_desk": "https://images.unsplash.com/photo-1516315720917-231ef9acce48?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwyfHxnb3Zlcm5tZW50JTIwb2ZmaWNlJTIwam9iJTIwZGVzayUyMGNvbXB1dGVyfGVufDB8fHx8MTc4ODQ0MjQ2OXww&ixlib=rb-4.1.0&q=85",
+    "resume_cv_paper": "https://images.unsplash.com/photo-1698047681432-006d2449c631?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzZ8MHwxfHNlYXJjaHwxfHxyZXN1bWUlMjBjdiUyMGRvY3VtZW50JTIwdGVtcGxhdGUlMjBjYXJlZXJ8ZW58MHx8fHwxNzg4NDQyNDY5fDA&ixlib=rb-4.1.0&q=85",
+    "resume_cv_desk": "https://images.unsplash.com/photo-1635253548172-d82ffe76449d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzZ8MHwxfHNlYXJjaHw0fHxyZXN1bWUlMjBjdiUyMGRvY3VtZW50JTIwdGVtcGxhdGUlMjBjYXJlZXJ8ZW58MHx8fHwxNzg4NDQyNDY5fDA&ixlib=rb-4.1.0&q=85"
+  },
+  "test_ids": {
+    "header_whatsapp_btn": "header-join-whatsapp-button",
+    "footer_whatsapp_btn": "footer-join-whatsapp-button",
+    "solar_menu_link": "header-solar-services-link",
+    "blogs_menu_link": "header-blogs-link",
+    "job_card_whatsapp_summary": "job-detail-whatsapp-summary-card",
+    "copy_whatsapp_summary_btn": "copy-whatsapp-summary-button",
+    "pagination_prev_btn": "jobs-pagination-previous-button",
+    "pagination_next_btn": "jobs-pagination-next-button",
+    "rank_math_title_input": "admin-rank-math-custom-title-input",
+    "rank_math_focus_keyword": "admin-rank-math-focus-keyword-input",
+    "rank_math_description": "admin-rank-math-description-input",
+    "admin_blog_title_input": "admin-blog-title-input",
+    "admin_blog_content_editor": "admin-blog-content-editor",
+    "admin_cv_upload_input": "admin-cv-upload-input"
+  },
+  "instructions_to_main_agent": [
+    "1. Build the full-stack portal with React frontend and FastAPI backend.",
+    "2. Ensure exact job summary format: 🔥 [Job Name] 🔥 | ✅ कुल पद | ✅ योग्यता | 📅 आखरी तारीख | 👇 लिंक.",
+    "3. Display exactly 20 job listings per page on the main Vacancy Homepage (`/`) with functional pagination controls.",
+    "4. Move the original/demo solar landing content to `/solar` and ensure 'Solar Services' is prominently linked in the Header and Footer.",
+    "5. Include 'Join WhatsApp Channel' buttons in Header, Footer, and on every Job Detail page pointing to `https://whatsapp.com/channel/0029Va4Owji5Ui2bLEktCl1C`.",
+    "6. Build the Admin Panel (`/admin`) with login (simple email/password), featuring: Manage Jobs (with Rank Math SEO fields: custom title, focus keyword, meta description, live SEO score checker, and auto-generated WhatsApp summary preview with Copy button), Manage Blogs (rich text/markdown editor + cover image uploader), and Resume/CV Templates Uploader.",
+    "7. Implement SEO Title Shuffler logic for external/synced jobs so title and description variations stay unique and avoid Google duplicate content penalties.",
+    "8. Add a dedicated `/blogs` section with article listing and detailed blog view (`/blogs/:slug`).",
+    "9. Use Lucide icons (`lucide-react`) for UI elements and Sonner (`sonner`) for toast notifications when copying WhatsApp summaries or saving forms.",
+    "10. Attach `data-testid` to all interactive components as specified in the test_ids section."
+  ]
+}

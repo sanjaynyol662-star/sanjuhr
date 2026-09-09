@@ -1,0 +1,249 @@
+/* ---------------------------------------------------------------------------
+   Multi-theme variable overrides for the PUBLIC site.
+   The whole site is driven by the CSS vars defined in index.css (:root = dark,
+   body.light-theme = light). Each named theme below just re-maps those same
+   vars, so switching a theme instantly re-skins the entire site.
+
+   Loaded AFTER index.css so, at equal specificity, these win.
+   "default" applies NO class → site keeps its current look untouched.
+--------------------------------------------------------------------------- */
+
+/* ---- Light-based presets (added together with .light-theme) ---- */
+body.theme-luxury {
+  --bg: #f6efe7; --bg-2: #fffaf4;
+  --panel: rgba(255, 255, 255, 0.8); --panel-solid: #fffaf4;
+  --border: rgba(90, 40, 30, 0.12); --border-strong: rgba(90, 40, 30, 0.2);
+  --text: #3a2b25; --text-dim: #6b5147; --muted: #8a7266;
+  --emerald: #9f2d2d; --emerald-glow: #c0392b; --emerald-deep: #7e2222; --emerald-soft: rgba(159, 45, 45, 0.1);
+  --amber: #b8860b;
+  background: #f6efe7 !important; color: #3a2b25;
+}
+body.theme-retro {
+  --bg: #ece3d1; --bg-2: #f8f3e7;
+  --panel: rgba(248, 243, 231, 0.85); --panel-solid: #f8f3e7;
+  --border: rgba(60, 55, 40, 0.14); --border-strong: rgba(60, 55, 40, 0.22);
+  --text: #3b3a33; --text-dim: #5f5c50; --muted: #7c766a;
+  --emerald: #4b6070; --emerald-glow: #5a7183; --emerald-deep: #3a4b58; --emerald-soft: rgba(75, 96, 112, 0.12);
+  --amber: #a9772e;
+  background: #ece3d1 !important; color: #3b3a33;
+}
+body.theme-arctic {
+  --bg: #eef7f6; --bg-2: #ffffff;
+  --panel: rgba(255, 255, 255, 0.82); --panel-solid: #ffffff;
+  --border: rgba(15, 80, 72, 0.12); --border-strong: rgba(15, 80, 72, 0.2);
+  --text: #0f2a28; --text-dim: #3c5c58; --muted: #5b7c78;
+  --emerald: #0f766e; --emerald-glow: #14b8a6; --emerald-deep: #0b544e; --emerald-soft: rgba(15, 118, 110, 0.1);
+  --amber: #0891b2;
+  background: #eef7f6 !important; color: #0f2a28;
+}
+body.theme-nature {
+  --bg: #eff6e9; --bg-2: #ffffff;
+  --panel: rgba(255, 255, 255, 0.82); --panel-solid: #ffffff;
+  --border: rgba(40, 80, 30, 0.12); --border-strong: rgba(40, 80, 30, 0.2);
+  --text: #22331d; --text-dim: #48603c; --muted: #5f7a54;
+  --emerald: #2f8a3b; --emerald-glow: #3fae4d; --emerald-deep: #246e2e; --emerald-soft: rgba(47, 138, 59, 0.1);
+  --amber: #b5850f;
+  background: #eff6e9 !important; color: #22331d;
+}
+
+/* ---- Dark-based presets (no .light-theme) ---- */
+body.theme-ember {
+  --bg: #171412; --bg-2: #221d18;
+  --panel: rgba(34, 29, 24, 0.6); --panel-solid: #221d18;
+  --border: rgba(255, 255, 255, 0.08); --border-strong: rgba(255, 255, 255, 0.14);
+  --text: #f4e9df; --text-dim: #c9b6a6; --muted: #b59f8d;
+  --emerald: #e8935a; --emerald-glow: #f2a86f; --emerald-deep: #c9743f; --emerald-soft: rgba(232, 147, 90, 0.14);
+  --amber: #f2a86f;
+  background: #171412 !important; color: #f4e9df;
+}
+body.theme-dracula {
+  --bg: #191527; --bg-2: #221d38;
+  --panel: rgba(34, 29, 56, 0.6); --panel-solid: #221d38;
+  --border: rgba(255, 255, 255, 0.08); --border-strong: rgba(255, 255, 255, 0.14);
+  --text: #ece7fb; --text-dim: #bcb2df; --muted: #a99fca;
+  --emerald: #a855f7; --emerald-glow: #c084fc; --emerald-deep: #8b3ff0; --emerald-soft: rgba(168, 85, 247, 0.16);
+  --amber: #f0a5f0;
+  background: #191527 !important; color: #ece7fb;
+}
+body.theme-midnight {
+  --bg: #0d1526; --bg-2: #152039;
+  --panel: rgba(21, 32, 57, 0.6); --panel-solid: #152039;
+  --border: rgba(255, 255, 255, 0.08); --border-strong: rgba(255, 255, 255, 0.14);
+  --text: #e5edff; --text-dim: #a9bce0; --muted: #8ea3c9;
+  --emerald: #7aa2f0; --emerald-glow: #93b4f5; --emerald-deep: #5a84e0; --emerald-soft: rgba(122, 162, 240, 0.16);
+  --amber: #93b4f5;
+  background: #0d1526 !important; color: #e5edff;
+}
+
+/* ---------- Theme switcher dropdown (uses the same vars) ---------- */
+.theme-switcher-panel {
+  background: var(--panel-solid);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.4);
+}
+.theme-switcher-panel .react-colorful { width: 100%; height: 150px; }
+.theme-switcher-panel .react-colorful__hue { height: 16px; border-radius: 10px; margin-top: 8px; }
+.theme-switcher-panel .react-colorful__saturation { border-radius: 10px; }
+.theme-switcher-panel .react-colorful__pointer { width: 18px; height: 18px; }
+
+/* ===========================================================================
+   has-theme remap — the last pending piece.
+   When a named theme (luxury/retro/.../dracula) OR a custom primary color is
+   active, `body.has-theme` is present. These rules re-map every hardcoded
+   emerald / green Tailwind utility (and the greenish ambient glows) to the
+   ACTIVE accent family (--emerald / --emerald-glow / --emerald-deep) so the
+   whole site follows the chosen theme.
+
+   IMPORTANT: default Light & Dark do NOT get `.has-theme`, so the original
+   UI / theme is left completely untouched there.
+   Uses color-mix() to preserve the original translucency of each utility.
+--------------------------------------------------------------------------- */
+
+/* ---------- Ambient background glows (per-theme accent) ---------- */
+/* The greenish blurred glow blobs scattered across pages become the theme
+   accent instead of a fixed emerald. Amber/blue decorative blobs stay as-is. */
+body.has-theme {
+  --glow-1: color-mix(in srgb, var(--emerald) 16%, transparent);
+}
+body.has-theme .bg-emerald-500\/8.blur-3xl,
+body.has-theme .bg-emerald-500\/10.blur-3xl,
+body.has-theme .bg-emerald-500\/5.blur-3xl {
+  background-color: color-mix(in srgb, var(--emerald) 12%, transparent) !important;
+}
+
+/* ---------- TEXT ---------- */
+body.has-theme .text-emerald-100\/80,
+body.has-theme .text-emerald-100\/90,
+body.has-theme .text-emerald-200\/90,
+body.has-theme .text-emerald-300,
+body.has-theme .text-emerald-400,
+body.has-theme .text-emerald-400\/80,
+body.has-theme .text-emerald-500\/40,
+body.has-theme .text-green-400,
+body.has-theme .text-green-500 { color: var(--emerald-glow) !important; }
+
+body.has-theme .text-emerald-500,
+body.has-theme .text-emerald-600,
+body.has-theme .text-emerald-700,
+body.has-theme .text-emerald-800,
+body.has-theme .text-green-600,
+body.has-theme .text-green-700 { color: var(--emerald) !important; }
+
+/* ---------- SOLID BACKGROUNDS ---------- */
+body.has-theme .bg-emerald-400,
+body.has-theme .bg-emerald-500,
+body.has-theme .bg-emerald-600,
+body.has-theme .bg-emerald-700,
+body.has-theme .bg-green-500 { background-color: var(--emerald) !important; }
+
+/* light tints on light backgrounds */
+body.has-theme .bg-emerald-50,
+body.has-theme .bg-emerald-100,
+body.has-theme .bg-green-50 { background-color: var(--emerald-soft) !important; }
+
+/* translucent backgrounds — keep original alpha via color-mix */
+body.has-theme .bg-emerald-500\/5   { background-color: color-mix(in srgb, var(--emerald) 5%, transparent) !important; }
+body.has-theme .bg-emerald-500\/8,
+body.has-theme .bg-emerald-50\/40    { background-color: color-mix(in srgb, var(--emerald) 8%, transparent) !important; }
+body.has-theme .bg-emerald-500\/10,
+body.has-theme .bg-green-500\/10     { background-color: color-mix(in srgb, var(--emerald) 10%, transparent) !important; }
+body.has-theme .bg-emerald-500\/15   { background-color: color-mix(in srgb, var(--emerald) 15%, transparent) !important; }
+body.has-theme .bg-emerald-500\/20   { background-color: color-mix(in srgb, var(--emerald) 20%, transparent) !important; }
+
+/* ---------- BORDERS ---------- */
+body.has-theme .border-emerald-200,
+body.has-theme .border-emerald-300,
+body.has-theme .border-emerald-400,
+body.has-theme .border-emerald-500,
+body.has-theme .border-emerald-600,
+body.has-theme .border-green-200 { border-color: var(--emerald) !important; }
+
+body.has-theme .border-emerald-400\/20 { border-color: color-mix(in srgb, var(--emerald) 20%, transparent) !important; }
+body.has-theme .border-emerald-500\/20 { border-color: color-mix(in srgb, var(--emerald) 20%, transparent) !important; }
+body.has-theme .border-emerald-300\/40 { border-color: color-mix(in srgb, var(--emerald) 40%, transparent) !important; }
+body.has-theme .border-emerald-400\/60 { border-color: color-mix(in srgb, var(--emerald) 60%, transparent) !important; }
+body.has-theme .border-emerald-500\/30,
+body.has-theme .border-green-500\/30   { border-color: color-mix(in srgb, var(--emerald) 30%, transparent) !important; }
+body.has-theme .border-emerald-500\/40 { border-color: color-mix(in srgb, var(--emerald) 40%, transparent) !important; }
+
+/* ---------- GRADIENTS ---------- */
+/* Overriding the from/to custom props cascades into --tw-gradient-stops. */
+body.has-theme .from-emerald-400,
+body.has-theme .from-emerald-500,
+body.has-theme .from-emerald-500\/30,
+body.has-theme .from-emerald-900\/60 { --tw-gradient-from: var(--emerald) var(--tw-gradient-from-position) !important; }
+body.has-theme .to-emerald-500,
+body.has-theme .to-emerald-600,
+body.has-theme .to-emerald-700 { --tw-gradient-to: var(--emerald-deep) var(--tw-gradient-to-position) !important; }
+
+/* ---------- RINGS & SHADOWS ---------- */
+body.has-theme .ring-emerald-400\/20,
+body.has-theme .ring-emerald-500\/20 { --tw-ring-color: color-mix(in srgb, var(--emerald) 20%, transparent) !important; }
+body.has-theme .shadow-emerald-500\/20,
+body.has-theme .shadow-emerald-500\/30,
+body.has-theme .shadow-emerald-900\/20 { --tw-shadow-color: var(--emerald) !important; }
+
+/* ---------- Custom component classes (index.css) with baked-in green ---------- */
+body.has-theme .btn-mint {
+  background: linear-gradient(135deg, var(--emerald-glow) 0%, var(--emerald) 100%) !important;
+  border-color: color-mix(in srgb, var(--emerald-glow) 60%, transparent) !important;
+  box-shadow: 0 6px 24px -8px color-mix(in srgb, var(--emerald) 45%, transparent) !important;
+}
+body.has-theme .signin-badge {
+  background: linear-gradient(135deg, var(--emerald-glow) 0%, var(--emerald) 100%) !important;
+  box-shadow: 0 12px 30px -8px color-mix(in srgb, var(--emerald) 50%, transparent) !important;
+}
+body.has-theme .input:focus {
+  border-color: var(--emerald) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--emerald) 18%, transparent) !important;
+}
+body.has-theme .pill-3d:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--emerald-glow) 25%, transparent), color-mix(in srgb, var(--emerald) 10%, transparent)) !important;
+  border-color: color-mix(in srgb, var(--emerald-glow) 45%, transparent) !important;
+}
+body.has-theme .pill-3d.is-active {
+  background: linear-gradient(180deg, var(--emerald-glow), var(--emerald-deep)) !important;
+  border-color: color-mix(in srgb, var(--emerald-glow) 70%, transparent) !important;
+}
+/* stat cards */
+body.has-theme .stat-emerald {
+  color: var(--emerald-glow) !important;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--emerald) 15%, transparent) 0%, color-mix(in srgb, var(--emerald) 3%, transparent) 100%) !important;
+  border-color: color-mix(in srgb, var(--emerald) 30%, transparent) !important;
+}
+body.has-theme .stat-emerald .stat-value { color: var(--emerald-glow) !important; }
+/* new-updates cards */
+body.has-theme .nu-pill { background: var(--emerald-soft) !important; color: var(--emerald) !important; }
+body.has-theme .nu-arrow { color: var(--emerald) !important; }
+body:not(.light-theme).has-theme .nu-pill { color: var(--emerald-glow) !important; }
+body:not(.light-theme).has-theme .nu-arrow { color: var(--emerald-glow) !important; }
+/* fee rows & article accents */
+body.has-theme .fee-row-icon,
+body.has-theme .vacancy-article h3,
+body.has-theme .vacancy-article th,
+body.has-theme .vacancy-article a.ext-link { color: var(--emerald-glow) !important; }
+/* selection highlight */
+body.has-theme ::selection { background: color-mix(in srgb, var(--emerald) 35%, transparent); }
+
+/* ---------- Arbitrary-value hex utilities (baked green) ---------- */
+/* New-Updates banner gradient: from-[#065f46] via-[#059669] to-[#10b981] */
+body.has-theme .from-\[\#065f46\] { --tw-gradient-from: var(--emerald-deep) var(--tw-gradient-from-position) !important; }
+body.has-theme .via-\[\#059669\] { --tw-gradient-stops: var(--tw-gradient-from), var(--emerald) var(--tw-gradient-via-position), var(--tw-gradient-to) !important; }
+body.has-theme .to-\[\#10b981\] { --tw-gradient-to: var(--emerald-glow) var(--tw-gradient-to-position) !important; }
+
+/* ---------- New-Updates pills: text black in light, light-grey in dark (all themes) ---------- */
+body.light-theme .nu-card .nu-pill { color: #0f172a !important; }
+body:not(.light-theme) .nu-card .nu-pill { color: #e5e7eb !important; }
+
+/* filter-panel hairline gradient border (subtle) */
+body.has-theme .from-emerald-500\/15 { --tw-gradient-from: color-mix(in srgb, var(--emerald) 15%, transparent) var(--tw-gradient-from-position) !important; }
+body.has-theme .to-emerald-500\/10 { --tw-gradient-to: color-mix(in srgb, var(--emerald) 10%, transparent) var(--tw-gradient-to-position) !important; }
+
+/* important-variant utilities used on chips / push button */
+body.has-theme .\!bg-emerald-500\/10 { background-color: color-mix(in srgb, var(--emerald) 10%, transparent) !important; }
+body.has-theme .\!bg-emerald-500\/15,
+body.has-theme .hover\:\!bg-emerald-500\/15:hover { background-color: color-mix(in srgb, var(--emerald) 15%, transparent) !important; }
+body.has-theme .hover\:\!bg-emerald-500\/20:hover { background-color: color-mix(in srgb, var(--emerald) 20%, transparent) !important; }
+body.has-theme .\!border-emerald-500\/30 { border-color: color-mix(in srgb, var(--emerald) 30%, transparent) !important; }
+body.has-theme .\!text-emerald-300 { color: var(--emerald-glow) !important; }

@@ -1,0 +1,97 @@
+/* ---------------------------------------------------------------------------
+   Admin panel theme — clean Material-inspired look with light / dark support.
+   Scoped entirely to `.admin-shell` so the public site is unaffected.
+   Dark mode remaps the common neutral Tailwind utilities used across admin
+   pages, so every page picks up dark mode without per-file edits.
+--------------------------------------------------------------------------- */
+@import url("https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
+
+.admin-shell {
+  font-family: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --admin-bg: #f4f6f8;
+  --admin-surface: #ffffff;
+  --admin-text: #212b36;
+  --admin-muted: #637381;
+  --admin-border: #e6e8eb;
+  --admin-accent: #059669;
+  background-color: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+.admin-shell.dark {
+  --admin-bg: #161c24;
+  --admin-surface: #212b36;
+  --admin-text: #f9fafb;
+  --admin-muted: #919eab;
+  --admin-border: #303a45;
+}
+
+/* Soft Material card shadow on bordered rounded cards */
+.admin-shell .rounded-2xl.border,
+.admin-shell .rounded-3xl,
+.admin-shell .admin-card {
+  box-shadow: 0 0 2px 0 rgba(145, 158, 171, 0.2), 0 12px 24px -4px rgba(145, 158, 171, 0.12);
+}
+.admin-shell.dark .rounded-2xl.border,
+.admin-shell.dark .admin-card {
+  box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.4), 0 12px 24px -4px rgba(0, 0, 0, 0.35);
+}
+
+/* smooth theme transition */
+.admin-shell,
+.admin-shell .bg-white,
+.admin-shell .bg-slate-50,
+.admin-shell .bg-slate-100 {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* ---------- DARK MODE utility remaps ---------- */
+.admin-shell.dark .bg-white { background-color: #212b36 !important; }
+.admin-shell.dark .bg-slate-50 { background-color: #1a222c !important; }
+.admin-shell.dark .bg-slate-100 { background-color: #2a3540 !important; }
+.admin-shell.dark .bg-slate-200 { background-color: #323d48 !important; }
+.admin-shell.dark .bg-slate-50\/40 { background-color: rgba(42, 53, 64, 0.5) !important; }
+.admin-shell.dark .bg-emerald-50\/40 { background-color: rgba(5, 150, 105, 0.15) !important; }
+
+.admin-shell.dark .text-slate-900 { color: #f9fafb !important; }
+.admin-shell.dark .text-slate-800 { color: #f1f3f5 !important; }
+.admin-shell.dark .text-slate-700 { color: #dfe3e8 !important; }
+.admin-shell.dark .text-slate-600 { color: #c4cdd5 !important; }
+.admin-shell.dark .text-slate-500 { color: #919eab !important; }
+.admin-shell.dark .text-slate-400 { color: #6b7681 !important; }
+.admin-shell.dark .text-emerald-800 { color: #5be3b0 !important; }
+.admin-shell.dark .text-emerald-700 { color: #4ad4a2 !important; }
+
+.admin-shell.dark .border-slate-200 { border-color: #303a45 !important; }
+.admin-shell.dark .border-slate-300 { border-color: #3a4650 !important; }
+.admin-shell.dark .border-slate-100 { border-color: #28313b !important; }
+
+.admin-shell.dark .hover\:bg-slate-50:hover { background-color: #2a3540 !important; }
+.admin-shell.dark .hover\:bg-slate-100:hover { background-color: #323d48 !important; }
+.admin-shell.dark .hover\:bg-slate-200:hover { background-color: #3a4650 !important; }
+.admin-shell.dark .hover\:bg-emerald-50\/40:hover { background-color: rgba(5, 150, 105, 0.2) !important; }
+
+/* soft tinted badges/panels stay readable on dark */
+.admin-shell.dark .bg-emerald-50 { background-color: rgba(5, 150, 105, 0.16) !important; }
+.admin-shell.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.16) !important; }
+.admin-shell.dark .bg-sky-50 { background-color: rgba(56, 189, 248, 0.16) !important; }
+.admin-shell.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.16) !important; }
+.admin-shell.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.16) !important; }
+.admin-shell.dark .bg-amber-100 { background-color: rgba(245, 158, 11, 0.22) !important; }
+.admin-shell.dark .bg-emerald-100 { background-color: rgba(5, 150, 105, 0.22) !important; }
+.admin-shell.dark .bg-blue-100 { background-color: rgba(59, 130, 246, 0.22) !important; }
+
+/* inputs / textareas / selects in dark */
+.admin-shell.dark input,
+.admin-shell.dark textarea,
+.admin-shell.dark select {
+  background-color: #1a222c !important;
+  color: #f9fafb !important;
+  border-color: #3a4650 !important;
+}
+.admin-shell.dark input::placeholder,
+.admin-shell.dark textarea::placeholder { color: #6b7681 !important; }
+
+/* scrollbar */
+.admin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.admin-scroll::-webkit-scrollbar-thumb { background: rgba(145, 158, 171, 0.4); border-radius: 999px; }

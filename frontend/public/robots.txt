@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /api/sitemap.xml
+Allow: /api/sitemap-vacancies.xml
+Allow: /api/render
+Disallow: /api/
+Disallow: /admin
+
+Sitemap: https://hrdigitalservices.in/api/sitemap.xml
