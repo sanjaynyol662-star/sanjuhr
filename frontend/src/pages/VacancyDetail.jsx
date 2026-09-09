@@ -564,19 +564,8 @@ const VacancyDetail = () => {
           </div>
         )}
 
-      {/* Full article content (English source) — shown standalone only in Hindi
-          mode; in English mode it is already rendered inside the block above. */}
-      {v.content_html ? (
-        lang === "hi" ? (
-          <div className="glass p-6 mb-6" data-testid="vacancy-content">
-            <div className="section-eyebrow mb-3">पूरा विवरण (English)</div>
-            <div
-              className="vacancy-article"
-              dangerouslySetInnerHTML={{ __html: enhanceHtml(v.content_html) }}
-            />
-          </div>
-        ) : null
-      ) : v.row_text ? (
+      {/* Fallback summary only when there is no rich content at all */}
+      {!v.content_html && !v.hindi_description && v.row_text ? (
         <div className="glass p-6 mb-6">
           <div className="section-eyebrow mb-3">{lang === "hi" ? "सारांश" : "Summary"}</div>
           <p className="text-sm text-slate-300 leading-relaxed">{v.row_text}</p>
