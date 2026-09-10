@@ -212,6 +212,34 @@ const VacancyDetail = () => {
     { id: "sec-links", hi: "लिंक", en: "Links", show: Array.isArray(v.important_links) && v.important_links.length > 0 },
   ].filter((t) => t.show);
 
+  // Readable "key info" sections rendered INSIDE the Full Description area so a
+  // reader gets Eligibility / Age Limit / Salary / Selection in one flowing read
+  // (these also serve as the TOC scroll targets).
+  const renderKeyInfo = () => {
+    const hi = lang === "hi";
+    const rows = [
+      { id: "sec-eligibility", label: hi ? "योग्यता (Eligibility)" : "Eligibility", val: v.qualification },
+      { id: "sec-age", label: hi ? "आयु सीमा (Age Limit)" : "Age Limit", val: v.structured?.age_limit },
+      { id: "sec-honorarium", label: hi ? "वेतन / मानदेय (Salary)" : "Salary / Honorarium", val: v.structured?.salary },
+    ].filter((r) => r.val);
+    if (!rows.length) return null;
+    return (
+      <div className="mb-5" data-testid="key-info">
+        <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">
+          {hi ? "मुख्य जानकारी" : "Key Information"}
+        </h3>
+        <div className="space-y-2">
+          {rows.map((r) => (
+            <div key={r.id} id={r.id} className="scroll-mt-24 vacancy-article text-sm">
+              <span className="font-bold text-white">{r.label}: </span>
+              <span dangerouslySetInnerHTML={{ __html: enhanceHtml(String(r.val)) }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-10" data-testid="vacancy-detail-page">
       <SEO
@@ -358,29 +386,6 @@ const VacancyDetail = () => {
         )}
       </div>
 
-      {/* Table of Contents — quick jump to any section */}
-      {tocItems.length > 1 && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 mb-6" data-testid="vacancy-toc">
-          <div className="text-emerald-700 font-extrabold text-lg mb-3 flex items-center gap-2">
-            <FaListUl className="text-emerald-600" />
-            {lang === "hi" ? "विषय सूची" : "Table of Contents"}
-          </div>
-          <div className="flex flex-wrap gap-2.5">
-            {tocItems.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => scrollToSection(t.id)}
-                className="px-4 py-2 rounded-full border border-emerald-200 bg-white text-emerald-800 font-semibold text-sm transition hover:border-emerald-500 hover:bg-emerald-500 hover:text-white hover:shadow-md"
-                data-testid={`toc-${t.id}`}
-              >
-                {lang === "hi" ? t.hi : t.en}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* WhatsApp Smart Engine — auto summary + channel join */}
       <WhatsAppSummaryCard summary={v.whatsapp_summary} vacancy={v} lang={lang} />
 
@@ -431,7 +436,7 @@ const VacancyDetail = () => {
       {(v.structured?.salary || v.structured?.age_limit || v.qualification || v.structured?.selection || v.structured?.job_location) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6" data-testid="vacancy-secondary">
           {v.structured?.salary && (
-            <div id="sec-honorarium" className="detail-row scroll-mt-24">
+            <div className="detail-row">
               <div className="detail-icon bg-emerald-500/10 text-emerald-400"><FaMoneyBillWave /></div>
               <div className="flex-1 min-w-0">
                 <div className="detail-label">{lang === "hi" ? "वेतन / पे स्केल" : "Salary / Pay Scale"}</div>
@@ -440,7 +445,7 @@ const VacancyDetail = () => {
             </div>
           )}
           {v.qualification && (
-            <div id="sec-eligibility" className="detail-row scroll-mt-24">
+            <div className="detail-row">
               <div className="detail-icon bg-sky-500/10 text-sky-400"><FaGraduationCap /></div>
               <div className="flex-1 min-w-0">
                 <div className="detail-label">{lang === "hi" ? "शैक्षणिक योग्यता" : "Qualification"}</div>
@@ -449,7 +454,7 @@ const VacancyDetail = () => {
             </div>
           )}
           {v.structured?.age_limit && (
-            <div id="sec-age" className="detail-row scroll-mt-24">
+            <div className="detail-row">
               <div className="detail-icon bg-amber-500/10 text-amber-400"><FaUserCheck /></div>
               <div className="flex-1 min-w-0">
                 <div className="detail-label">{lang === "hi" ? "आयु सीमा" : "Age Limit"}</div>
@@ -458,7 +463,7 @@ const VacancyDetail = () => {
             </div>
           )}
           {v.structured?.selection && (
-            <div id="sec-selection" className="detail-row scroll-mt-24">
+            <div className="detail-row">
               <div className="detail-icon bg-violet-500/10 text-violet-400"><FaListUl /></div>
               <div className="flex-1 min-w-0">
                 <div className="detail-label">{lang === "hi" ? "चयन प्रक्रिया" : "Selection Process"}</div>
@@ -518,24 +523,43 @@ const VacancyDetail = () => {
         <div id="sec-links" className="glass p-5 mb-6 scroll-mt-24" data-testid="vacancy-links">
           <div className="section-eyebrow mb-3">{lang === "hi" ? "महत्वपूर्ण लिंक" : "Important Links"}</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {v.important_links.map((l, i) => {
-              const href = l.href || l.url;
-              const isPdf = l.type === "pdf" || (href || "").toLowerCase().split("?")[0].endsWith(".pdf");
-              const meta = KIND_META[l.kind] || (isPdf ? KIND_META.notification : KIND_META.official);
-              const label = meta.en;
-              return (
-                <a
-                  key={i}
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer nofollow"
-                  className="block w-full text-center px-6 py-4 rounded-2xl border border-slate-300 bg-white text-emerald-700 font-bold text-base md:text-lg transition hover:border-emerald-500 hover:shadow-md hover:-translate-y-0.5"
-                  data-testid={`imp-link-${l.kind || l.type || "link"}-${i}`}
-                >
-                  {label}
-                </a>
-              );
-            })}
+            {(() => {
+              // De-duplicate by URL, then resolve a clean English label. When the
+              // same label repeats (e.g. two notifications), number them so the
+              // buttons never show identical duplicate text.
+              const seen = new Set();
+              const clean = [];
+              for (const l of v.important_links) {
+                const href = l.href || l.url;
+                if (!href || seen.has(href)) continue;
+                seen.add(href);
+                const isPdf = l.type === "pdf" || href.toLowerCase().split("?")[0].endsWith(".pdf");
+                const meta = KIND_META[l.kind] || (isPdf ? KIND_META.notification : KIND_META.official);
+                clean.push({ href, kind: l.kind || l.type || "link", label: meta.en });
+              }
+              const counts = {};
+              clean.forEach((c) => { counts[c.label] = (counts[c.label] || 0) + 1; });
+              const running = {};
+              return clean.map((c, i) => {
+                let label = c.label;
+                if (counts[c.label] > 1) {
+                  running[c.label] = (running[c.label] || 0) + 1;
+                  label = `${c.label} ${running[c.label]}`;
+                }
+                return (
+                  <a
+                    key={i}
+                    href={c.href}
+                    target="_blank"
+                    rel="noreferrer nofollow"
+                    className="block w-full text-center px-6 py-4 rounded-2xl border border-slate-300 bg-white text-emerald-700 font-bold text-base md:text-lg transition hover:border-emerald-500 hover:shadow-md hover:-translate-y-0.5"
+                    data-testid={`imp-link-${c.kind}-${i}`}
+                  >
+                    {label}
+                  </a>
+                );
+              });
+            })()}
           </div>
         </div>
       )}
@@ -549,11 +573,36 @@ const VacancyDetail = () => {
         </div>
       )}
 
+      {/* Table of Contents — quick jump to any section (placed at the top of the
+          Full Description area, as requested) */}
+      {tocItems.length > 1 && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 mb-6" data-testid="vacancy-toc">
+          <div className="text-emerald-700 font-extrabold text-lg mb-3 flex items-center gap-2">
+            <FaListUl className="text-emerald-600" />
+            {lang === "hi" ? "विषय सूची" : "Table of Contents"}
+          </div>
+          <div className="flex flex-wrap gap-2.5">
+            {tocItems.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => scrollToSection(t.id)}
+                className="px-4 py-2 rounded-full border border-emerald-200 bg-white text-emerald-800 font-semibold text-sm transition hover:border-emerald-500 hover:bg-emerald-500 hover:text-white hover:shadow-md"
+                data-testid={`toc-${t.id}`}
+              >
+                {lang === "hi" ? t.hi : t.en}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Descriptive content (auto-generated: templates + AI rewrite) — flips with the toggle */}
       {lang === "hi"
         ? (v.hindi_description || v.hindi_how_to_apply || v.hindi_selection_process) && (
           <div className="glass p-6 mb-6" data-testid="vacancy-hindi">
             <div className="section-eyebrow mb-3">विवरण (हिंदी में)</div>
+            {renderKeyInfo()}
             {v.hindi_description && (
               <div id="sec-instructions" className="mb-5 scroll-mt-24" data-testid="hindi-description">
                 <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">पूरा विवरण</h3>
@@ -567,7 +616,7 @@ const VacancyDetail = () => {
               </div>
             )}
             {v.hindi_selection_process && (
-              <div data-testid="hindi-selection-process">
+              <div id="sec-selection" className="scroll-mt-24" data-testid="hindi-selection-process">
                 <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">चयन प्रक्रिया</h3>
                 <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.hindi_selection_process) }} />
               </div>
@@ -577,6 +626,7 @@ const VacancyDetail = () => {
         : (v.content_html || v.english_description || v.english_how_to_apply || v.english_selection_process || v.description) && (
           <div className="glass p-6 mb-6" data-testid="vacancy-english">
             <div className="section-eyebrow mb-3">Details (in English)</div>
+            {renderKeyInfo()}
             {(v.content_html || v.english_description || v.description) && (
               <div id="sec-instructions" className="mb-5 scroll-mt-24" data-testid="english-description">
                 <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">Full Description</h3>
@@ -597,7 +647,7 @@ const VacancyDetail = () => {
               </div>
             )}
             {v.english_selection_process && (
-              <div data-testid="english-selection-process">
+              <div id="sec-selection" className="scroll-mt-24" data-testid="english-selection-process">
                 <h3 className="font-display text-lg font-bold text-emerald-300 mb-2">Selection Process</h3>
                 <div className="vacancy-article text-sm" dangerouslySetInnerHTML={{ __html: renderRichText(v.english_selection_process) }} />
               </div>
